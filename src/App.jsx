@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { 
-  Calendar, BarChart2, Award, Info, RefreshCw, LogIn, LogOut, CheckCircle, Flame
+  Calendar, BarChart2, Award, Info, RefreshCw, LogIn, LogOut, CheckCircle, Flame, ShieldAlert, Zap, Compass, CheckSquare
 } from 'lucide-react';
 
 const WORKOUT_PLAN = [
@@ -17,6 +17,7 @@ const WORKOUT_PLAN = [
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [activeWeek, setActiveWeek] = useState(1);
+  const [strategyTab, setStrategyTab] = useState('tactics');
   const [logs, setLogs] = useState({});
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -87,18 +88,23 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* NAVIGATION NAVBAR */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(245,243,238,0.94)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '56px', justifyContent: 'space-between' }}>
           <a onClick={() => setCurrentPage('home')} style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--accent)', textDecoration: 'none', cursor: 'pointer' }}>RUN/</a>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <span onClick={() => setCurrentPage('tracker')} style={{ cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: currentPage === 'tracker' ? 'var(--accent)' : 'var(--text2)', textTransform: 'uppercase' }}>Tracker</span>
+            <span onClick={() => setCurrentPage('strategies')} style={{ cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: currentPage === 'strategies' ? 'var(--accent)' : 'var(--text2)', textTransform: 'uppercase' }}>Strategies</span>
             <span onClick={() => setCurrentPage('comeback')} style={{ cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: currentPage === 'comeback' ? 'var(--accent)' : 'var(--text2)', textTransform: 'uppercase' }}>Comeback</span>
             <span onClick={() => setCurrentPage('about')} style={{ cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: currentPage === 'about' ? 'var(--accent)' : 'var(--text2)', textTransform: 'uppercase' }}>About</span>
           </div>
         </div>
       </nav>
 
+      {/* MAIN CONTAINER */}
       <main style={{ flex: 1, paddingTop: '56px', maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '56px 2rem 2rem' }}>
+        
+        {/* CONNECTION BANNER */}
         <div style={{ margin: '1rem 0', padding: '10px 15px', borderRadius: '8px', background: supabaseConnected ? '#f0faf3' : '#fdf0f0', border: `1px solid ${supabaseConnected ? '#a8dab5' : '#e8a0a0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: supabaseConnected ? 'var(--green)' : 'var(--red)' }} />
@@ -111,6 +117,7 @@ export default function App() {
           )}
         </div>
 
+        {/* HOME VIEW */}
         {currentPage === 'home' && (
           <div style={{ padding: '2rem 0' }}>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 8vw, 80px)', fontWeight: 700, lineHeight: 0.95, textTransform: 'uppercase', marginBottom: '1.5rem' }}>
@@ -125,6 +132,11 @@ export default function App() {
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Training Tracker</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>Log running logs from the 16-week cycle.</p>
               </div>
+              <div onClick={() => setCurrentPage('strategies')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
+                <Award style={{ color: 'var(--blue)', marginBottom: '10px' }} />
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Coaching Strategies</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>Tactical race guides, terrain guides, and packing lists.</p>
+              </div>
               <div onClick={() => setCurrentPage('comeback')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
                 <Flame style={{ color: 'var(--red)', marginBottom: '10px' }} />
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Comeback Plan</h3>
@@ -134,6 +146,7 @@ export default function App() {
           </div>
         )}
 
+        {/* TRACKER VIEW */}
         {currentPage === 'tracker' && (
           <div>
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
@@ -179,6 +192,88 @@ export default function App() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* STRATEGIES VIEW */}
+        {currentPage === 'strategies' && (
+          <div>
+            <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700 }}>COACHING STRATEGIES</h2>
+              <p style={{ fontSize: '13px', color: 'var(--text2)' }}>Race day guidelines, packing lists, and pacing blueprints for the team.</p>
+            </div>
+
+            {/* Inner Nav */}
+            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => setStrategyTab('tactics')} 
+                style={{ background: 'none', border: 'none', padding: '10px 15px', fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: strategyTab === 'tactics' ? 'var(--accent)' : 'var(--text3)', cursor: 'pointer', borderBottom: strategyTab === 'tactics' ? '2px solid var(--accent)' : 'none' }}>
+                Race Tactics
+              </button>
+              <button 
+                onClick={() => setStrategyTab('terrain')} 
+                style={{ background: 'none', border: 'none', padding: '10px 15px', fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: strategyTab === 'terrain' ? 'var(--accent)' : 'var(--text3)', cursor: 'pointer', borderBottom: strategyTab === 'terrain' ? '2px solid var(--accent)' : 'none' }}>
+                Terrain Guides
+              </button>
+              <button 
+                onClick={() => setStrategyTab('checklist')} 
+                style={{ background: 'none', border: 'none', padding: '10px 15px', fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: strategyTab === 'checklist' ? 'var(--accent)' : 'var(--text3)', cursor: 'pointer', borderBottom: strategyTab === 'checklist' ? '2px solid var(--accent)' : 'none' }}>
+                Race Day Checklist
+              </button>
+            </div>
+
+            {/* Tactics Tab */}
+            {strategyTab === 'tactics' && (
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}><Zap size={18} /> Pacing Blueprint</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
+                    XC is about even effort, not even splits. Going out too hard in the first 800m is the easiest way to ruin your race. Run the first mile controlled, settle into your goal effort during the second mile, and use your strength to pass fatigued runners in the final mile.
+                  </p>
+                </div>
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--blue)' }}><CheckSquare size={18} /> Pack Running</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
+                    Find your teammates early. Run in pairs or packs of three. Working together divides the mental burden and helps you drag each other through the difficult middle mile. Focus on keeping contact with the runner in front of you.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Terrain Tab */}
+            {strategyTab === 'terrain' && (
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--red)' }}><Compass size={18} /> Hill Mechanics</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
+                    <strong>Going Up:</strong> Shorten your stride, drive your arms, lean from the ankles, and maintain your cadence. Do not sprint up. <br />
+                    <strong>Cresting:</strong> Accelerate over the top of the hill. Most runners slow down when they crest; you must surge for 5-10 strides to establish a gap. <br />
+                    <strong>Going Down:</strong> Relax your body, lean forward into the descent, and let gravity do the work. Avoid breaking or leaning backward.
+                  </p>
+                </div>
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--green)' }}><ShieldAlert size={18} /> Mud & Poor Footing</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
+                    On soft or wet surfaces, increase your cadence (steps per minute) slightly and shorten your stride. This prevents slipping and reduces the energy wasted on unstable footing. Keep your eyes up to scan the path ahead and pick the firmest ground.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Checklist Tab */}
+            {strategyTab === 'checklist' && (
+              <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: 'var(--accent)' }}>Race Day Bag Essentials</h3>
+                <ul style={{ listStyleType: 'none', padding: 0, display: 'grid', gap: '8px', fontSize: '13px', color: 'var(--text2)' }}>
+                  <li>⬜ <strong>Spikes & Wrench:</strong> Check pin lengths based on course conditions (e.g., 1/4" for dry grass, 3/8" for mud).</li>
+                  <li>⬜ <strong>Uniform:</strong> Jersey, shorts, and warm-up layers.</li>
+                  <li>⬜ <strong>Water & Hydration:</strong> Electrolyte drink for pre-race, water for post-race.</li>
+                  <li>⬜ <strong>Extra Socks:</strong> Always pack a dry pair of socks to change into immediately after running.</li>
+                  <li>⬜ <strong>Garbage Bag:</strong> To keep your race bag dry if it rains.</li>
+                  <li>⬜ <strong>Fuel/Snacks:</strong> Energy bars, bananas, or easily digestible carbs for 2 hours before the race.</li>
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
