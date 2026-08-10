@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f5f3ee;
+  --bg2: #ffffff;
+  --bg3: #edeae3;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.15);
+  --text: #1c1b18;
+  --text2: #5a5850;
+  --text3: #9a9890;
+  --accent: #b8892a;
+  --accent2: #9a7020;
+  --green: #2e8b4a;
+  --red: #c0392b;
+  --blue: #2563a8;
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body: 'Barlow', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+  font-family: var(--font-body); 
+  background: var(--bg); 
+  color: var(--text); 
+  min-height: 100vh; 
+}
