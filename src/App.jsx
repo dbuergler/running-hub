@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { 
-  Calendar, BarChart2, Award, Info, RefreshCw, LogIn, LogOut, CheckCircle, Flame, ShieldAlert, Zap, Compass, CheckSquare
-} from 'lucide-react';
+import { Calendar, Award, RefreshCw, Flame, Users } from 'lucide-react';
+
+// Import our modular view components
+import DayItem from './components/DayItem';
+import StrategiesView from './components/StrategiesView';
+import RacesView from './components/RacesView';
+import AthletesView from './components/AthletesView';
+import AboutView from './components/AboutView';
 
 const WORKOUT_PLAN = [
   { w: 1, d: 1, type: 'easy', desc: '0–3 miles easy run' },
@@ -17,10 +22,37 @@ const WORKOUT_PLAN = [
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [activeWeek, setActiveWeek] = useState(1);
-  const [strategyTab, setStrategyTab] = useState('tactics');
   const [logs, setLogs] = useState({});
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Dynamic states linked to our Supabase databases
+  const [strategies, setStrategies] = useState([]);
+  const [races, setRaces] = useState([]);
+  const [athletes, setAthletes] = useState([]);
+  const [aboutProfile, setAboutProfile] = useState({
+    name: 'Coach Daniel',
+    role: 'Head Cross Country & Track Coach',
+    location: 'Indianapolis, IN',
+    bio: 'Dedicated to developing balanced runners, building strategic physical base capacities, and structuring positive team athletic programs.',
+    achievements: '3x State Qualifier Appearances · 12 All-Conference Runners coached'
+  });
+
+  // Inject Team Colors (Red, Blue, & White)
+  useEffect(() => {
+    document.documentElement.style.setProperty('--bg', '#f1f5f9');
+    document.documentElement.style.setProperty('--bg2', '#ffffff');
+    document.documentElement.style.setProperty('--bg3', '#e2e8f0');
+    document.documentElement.style.setProperty('--border', 'rgba(15,43,92,0.1)');
+    document.documentElement.style.setProperty('--border2', 'rgba(15,43,92,0.25)');
+    document.documentElement.style.setProperty('--text', '#0f172a');
+    document.documentElement.style.setProperty('--text2', '#334155');
+    document.documentElement.style.setProperty('--text3', '#64748b');
+    document.documentElement.style.setProperty('--accent', '#0f2b5c'); // Deep Royal Blue
+    document.documentElement.style.setProperty('--accent2', '#1e40af'); // Vibrant Blue
+    document.documentElement.style.setProperty('--red', '#c2185b'); // Crimson Red
+    document.documentElement.style.setProperty('--blue', '#0f2b5c');
+  }, []);
 
   useEffect(() => {
     const cachedLogs = localStorage.getItem('run_logs');
@@ -35,21 +67,38 @@ export default function App() {
       const { data, error } = await supabase.from('run_logs').select('id').limit(1);
       if (!error) {
         setSupabaseConnected(true);
-        fetchLogsFromSupabase();
+        fetchAllData();
       }
     } catch (err) {
       setSupabaseConnected(false);
     }
   };
 
-  const fetchLogsFromSupabase = async () => {
+  const fetchAllData = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('run_logs').select('*');
-    if (!error && data) {
-      const formatted = {};
-      data.forEach(row => { formatted[row.id] = row; });
-      setLogs(formatted);
-      localStorage.setItem('run_logs', JSON.stringify(formatted));
+    try {
+      const { data: logRows } = await supabase.from('run_logs').select('*');
+      if (logRows) {
+        const formatted = {};
+        logRows.forEach(row => { formatted[row.id] = row; });
+        setLogs(formatted);
+        localStorage.setItem('run_logs', JSON.stringify(formatted));
+      }
+
+      const { data: strategyRows } = await supabase.from('run_resources').select('*');
+      if (strategyRows) setStrategies(strategyRows);
+
+      const { data: raceRows } = await supabase.from('run_races').select('*');
+      if (raceRows) setRaces(raceRows);
+
+      const { data: athleteRows } = await supabase.from('run_athletes').select('*');
+      if (athleteRows) setAthletes(athleteRows);
+
+      const { data: settingRows } = await supabase.from('run_settings').select('*').eq('id', 'about').single();
+      if (settingRows && settingRows.data) setAboutProfile(settingRows.data);
+
+    } catch (err) {
+      console.error(err);
     }
     setLoading(false);
   };
@@ -88,30 +137,40 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* NAVIGATION NAVBAR */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(245,243,238,0.94)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '56px', justifyContent: 'space-between' }}>
-          <a onClick={() => setCurrentPage('home')} style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--accent)', textDecoration: 'none', cursor: 'pointer' }}>RUN/</a>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <span onClick={() => setCurrentPage('tracker')} style={{ cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: currentPage === 'tracker' ? 'var(--accent)' : 'var(--text2)', textTransform: 'uppercase' }}>Tracker</span>
-            <span onClick={() => setCurrentPage('strategies')} style={{ cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: currentPage === 'strategies' ? 'var(--accent)' : 'var(--text2)', textTransform: 'uppercase' }}>Strategies</span>
-            <span onClick={() => setCurrentPage('comeback')} style={{ cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: currentPage === 'comeback' ? 'var(--accent)' : 'var(--text2)', textTransform: 'uppercase' }}>Comeback</span>
-            <span onClick={() => setCurrentPage('about')} style={{ cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: currentPage === 'about' ? 'var(--accent)' : 'var(--text2)', textTransform: 'uppercase' }}>About</span>
+      {/* NAVIGATION BAR */}
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3px solid var(--red)' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '58px', justifyContent: 'space-between' }}>
+          <a onClick={() => setCurrentPage('home')} style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700, letterSpacing: '0.04em', color: '#ffffff', textDecoration: 'none', cursor: 'pointer' }}>RUN/</a>
+          <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
+            {['tracker', 'strategies', 'races', 'athletes', 'about'].map((tab) => (
+              <span 
+                key={tab}
+                onClick={() => setCurrentPage(tab)} 
+                style={{ 
+                  cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, 
+                  color: currentPage === tab ? '#ffffff' : 'rgba(255,255,255,0.7)', 
+                  borderBottom: currentPage === tab ? '2px solid #ffffff' : 'none',
+                  paddingBottom: '4px', textTransform: 'uppercase' 
+                }}
+              >
+                {tab}
+              </span>
+            ))}
           </div>
         </div>
       </nav>
 
-      {/* MAIN CONTAINER */}
-      <main style={{ flex: 1, paddingTop: '56px', maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '56px 2rem 2rem' }}>
+      {/* CONTENT FRAME */}
+      <main style={{ flex: 1, paddingTop: '58px', maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '58px 2rem 4rem' }}>
         
-        {/* CONNECTION BANNER */}
-        <div style={{ margin: '1rem 0', padding: '10px 15px', borderRadius: '8px', background: supabaseConnected ? '#f0faf3' : '#fdf0f0', border: `1px solid ${supabaseConnected ? '#a8dab5' : '#e8a0a0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+        {/* DATABASE CONNECTION BANNER */}
+        <div style={{ margin: '1rem 0 2rem', padding: '10px 15px', borderRadius: '8px', background: supabaseConnected ? '#f0faf3' : '#fdf0f0', border: `1px solid ${supabaseConnected ? '#a8dab5' : '#e8a0a0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: supabaseConnected ? 'var(--green)' : 'var(--red)' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: supabaseConnected ? 'var(--green)' : 'var(--red)' }} />
-            {supabaseConnected ? "Database Connected (Autosyncing)" : "Offline Mode (Using LocalStorage)"}
+            {supabaseConnected ? "Database Synced (Supabase Live)" : "Offline Mode (Local Storage Only)"}
           </div>
           {supabaseConnected && (
-            <button onClick={fetchLogsFromSupabase} disabled={loading} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
+            <button onClick={fetchAllData} disabled={loading} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text3)' }}>
               <RefreshCw size={14} className={loading ? "spin" : ""} />
             </button>
           )}
@@ -120,27 +179,27 @@ export default function App() {
         {/* HOME VIEW */}
         {currentPage === 'home' && (
           <div style={{ padding: '2rem 0' }}>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 8vw, 80px)', fontWeight: 700, lineHeight: 0.95, textTransform: 'uppercase', marginBottom: '1.5rem' }}>
-              Train.<br />Analyze.<br /><span style={{ color: 'var(--accent)' }}>Coach.</span>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 8vw, 80px)', fontWeight: 700, lineHeight: 0.95, textTransform: 'uppercase', marginBottom: '1.5rem', color: 'var(--accent)' }}>
+              TEAM TRACKER.<br />COACHING HUB.<br /><span style={{ color: 'var(--red)' }}>RUN STRONGER.</span>
             </h1>
-            <p style={{ color: 'var(--text2)', maxWidth: '480px', marginBottom: '2rem', fontSize: '15px', lineHeight: 1.6 }}>
-              A personal running management setup. Log workouts, study pacing patterns, and maintain training calendar logs inside a clean ecosystem.
+            <p style={{ color: 'var(--text2)', maxWidth: '480px', marginBottom: '2.5rem', fontSize: '15px', lineHeight: 1.6 }}>
+              A collaborative team coaching ecosystem. Track personal logs, manage dynamic athlete rosters, and document race-day pacing frameworks in one central hub.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div onClick={() => setCurrentPage('tracker')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+              <div onClick={() => setCurrentPage('tracker')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
                 <Calendar style={{ color: 'var(--accent)', marginBottom: '10px' }} />
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Training Tracker</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>Log running logs from the 16-week cycle.</p>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Training Logs</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>Log running logs from the 16-week cycle.</p>
               </div>
-              <div onClick={() => setCurrentPage('strategies')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
-                <Award style={{ color: 'var(--blue)', marginBottom: '10px' }} />
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Coaching Strategies</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>Tactical race guides, terrain guides, and packing lists.</p>
+              <div onClick={() => setCurrentPage('strategies')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--red)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
+                <Award style={{ color: 'var(--red)', marginBottom: '10px' }} />
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Race Strategies</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>View and configure custom strategy card notes.</p>
               </div>
-              <div onClick={() => setCurrentPage('comeback')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
-                <Flame style={{ color: 'var(--red)', marginBottom: '10px' }} />
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Comeback Plan</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '4px' }}>12-week gradual base building template.</p>
+              <div onClick={() => setCurrentPage('athletes')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
+                <Users style={{ color: 'var(--accent)', marginBottom: '10px' }} />
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Athletes & Roster</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>Track rosters, season stats, and upload lists.</p>
               </div>
             </div>
           </div>
@@ -150,8 +209,8 @@ export default function App() {
         {currentPage === 'tracker' && (
           <div>
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700 }}>TRAINING TRACKER</h2>
-              <p style={{ fontSize: '13px', color: 'var(--text2)' }}>Select a week to log workout metrics, times, efforts, and details.</p>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TRAINING TRACKER</h2>
+              <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Log workout metrics, times, efforts, and details for the selected training cycle.</p>
             </div>
 
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
@@ -160,14 +219,10 @@ export default function App() {
                   key={wk}
                   onClick={() => setActiveWeek(wk)}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    border: '1px solid var(--border)',
-                    background: activeWeek === wk ? '#faecd0' : 'transparent',
-                    color: activeWeek === wk ? 'var(--accent)' : 'var(--text3)',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '11px'
+                    padding: '6px 14px', borderRadius: '20px', border: '1px solid var(--border)',
+                    background: activeWeek === wk ? 'var(--accent)' : 'transparent',
+                    color: activeWeek === wk ? '#ffffff' : 'var(--text3)',
+                    cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600
                   }}
                 >
                   Week {wk}
@@ -182,12 +237,8 @@ export default function App() {
 
                 return (
                   <DayItem 
-                    key={dayKey} 
-                    dayKey={dayKey} 
-                    day={day} 
-                    logged={loggedVal} 
-                    onSave={handleSaveLog} 
-                    onClear={handleClearLog} 
+                    key={dayKey} dayKey={dayKey} day={day} logged={loggedVal} 
+                    onSave={handleSaveLog} onClear={handleClearLog} 
                   />
                 );
               })}
@@ -195,180 +246,36 @@ export default function App() {
           </div>
         )}
 
-        {/* STRATEGIES VIEW */}
         {currentPage === 'strategies' && (
-          <div>
-            <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700 }}>COACHING STRATEGIES</h2>
-              <p style={{ fontSize: '13px', color: 'var(--text2)' }}>Race day guidelines, packing lists, and pacing blueprints for the team.</p>
-            </div>
-
-            {/* Inner Nav */}
-            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              <button 
-                onClick={() => setStrategyTab('tactics')} 
-                style={{ background: 'none', border: 'none', padding: '10px 15px', fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: strategyTab === 'tactics' ? 'var(--accent)' : 'var(--text3)', cursor: 'pointer', borderBottom: strategyTab === 'tactics' ? '2px solid var(--accent)' : 'none' }}>
-                Race Tactics
-              </button>
-              <button 
-                onClick={() => setStrategyTab('terrain')} 
-                style={{ background: 'none', border: 'none', padding: '10px 15px', fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: strategyTab === 'terrain' ? 'var(--accent)' : 'var(--text3)', cursor: 'pointer', borderBottom: strategyTab === 'terrain' ? '2px solid var(--accent)' : 'none' }}>
-                Terrain Guides
-              </button>
-              <button 
-                onClick={() => setStrategyTab('checklist')} 
-                style={{ background: 'none', border: 'none', padding: '10px 15px', fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: strategyTab === 'checklist' ? 'var(--accent)' : 'var(--text3)', cursor: 'pointer', borderBottom: strategyTab === 'checklist' ? '2px solid var(--accent)' : 'none' }}>
-                Race Day Checklist
-              </button>
-            </div>
-
-            {/* Tactics Tab */}
-            {strategyTab === 'tactics' && (
-              <div style={{ display: 'grid', gap: '1.5rem' }}>
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}><Zap size={18} /> Pacing Blueprint</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
-                    XC is about even effort, not even splits. Going out too hard in the first 800m is the easiest way to ruin your race. Run the first mile controlled, settle into your goal effort during the second mile, and use your strength to pass fatigued runners in the final mile.
-                  </p>
-                </div>
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--blue)' }}><CheckSquare size={18} /> Pack Running</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
-                    Find your teammates early. Run in pairs or packs of three. Working together divides the mental burden and helps you drag each other through the difficult middle mile. Focus on keeping contact with the runner in front of you.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Terrain Tab */}
-            {strategyTab === 'terrain' && (
-              <div style={{ display: 'grid', gap: '1.5rem' }}>
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--red)' }}><Compass size={18} /> Hill Mechanics</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
-                    <strong>Going Up:</strong> Shorten your stride, drive your arms, lean from the ankles, and maintain your cadence. Do not sprint up. <br />
-                    <strong>Cresting:</strong> Accelerate over the top of the hill. Most runners slow down when they crest; you must surge for 5-10 strides to establish a gap. <br />
-                    <strong>Going Down:</strong> Relax your body, lean forward into the descent, and let gravity do the work. Avoid breaking or leaning backward.
-                  </p>
-                </div>
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--green)' }}><ShieldAlert size={18} /> Mud & Poor Footing</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
-                    On soft or wet surfaces, increase your cadence (steps per minute) slightly and shorten your stride. This prevents slipping and reduces the energy wasted on unstable footing. Keep your eyes up to scan the path ahead and pick the firmest ground.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Checklist Tab */}
-            {strategyTab === 'checklist' && (
-              <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: 'var(--accent)' }}>Race Day Bag Essentials</h3>
-                <ul style={{ listStyleType: 'none', padding: 0, display: 'grid', gap: '8px', fontSize: '13px', color: 'var(--text2)' }}>
-                  <li>⬜ <strong>Spikes & Wrench:</strong> Check pin lengths based on course conditions (e.g., 1/4" for dry grass, 3/8" for mud).</li>
-                  <li>⬜ <strong>Uniform:</strong> Jersey, shorts, and warm-up layers.</li>
-                  <li>⬜ <strong>Water & Hydration:</strong> Electrolyte drink for pre-race, water for post-race.</li>
-                  <li>⬜ <strong>Extra Socks:</strong> Always pack a dry pair of socks to change into immediately after running.</li>
-                  <li>⬜ <strong>Garbage Bag:</strong> To keep your race bag dry if it rains.</li>
-                  <li>⬜ <strong>Fuel/Snacks:</strong> Energy bars, bananas, or easily digestible carbs for 2 hours before the race.</li>
-                </ul>
-              </div>
-            )}
-          </div>
+          <StrategiesView 
+            strategies={strategies} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
+          />
         )}
 
-        {currentPage === 'comeback' && (
-          <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, marginBottom: '1rem' }}>COMEBACK PLAN</h2>
-            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)' }}>12-Week Base Focus</h3>
-              <p style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>
-                A conservative building blueprint emphasizing routine over velocity. Connective tissues and bone structures adapt at slower rates than aerobic fitness metrics. Stay disciplined to avoid setbacks.
-              </p>
-            </div>
-          </div>
+        {currentPage === 'races' && (
+          <RacesView 
+            races={races} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
+          />
+        )}
+
+        {currentPage === 'athletes' && (
+          <AthletesView 
+            athletes={athletes} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
+          />
         )}
 
         {currentPage === 'about' && (
-          <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, marginBottom: '1rem' }}>ABOUT</h2>
-            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem' }}>
-              <p style={{ fontSize: '14px', color: 'var(--text2)', lineHeight: 1.6 }}>
-                This is a running and coaching dashboard. Build the database, configure local tracking values, and organize athlete programs from a consolidated UI.
-              </p>
-            </div>
-          </div>
+          <AboutView 
+            profile={aboutProfile} supabaseConnected={supabaseConnected} 
+            onSaveProfile={(data) => {
+              setAboutProfile(data);
+              if (supabaseConnected) {
+                supabase.from('run_settings').upsert({ id: 'about', data });
+              }
+            }} 
+          />
         )}
       </main>
-    </div>
-  );
-}
-
-function DayItem({ dayKey, day, logged, onSave, onClear }) {
-  const [expanded, setExpanded] = useState(false);
-  const [miles, setMiles] = useState(logged.miles || '');
-  const [pace, setPace] = useState(logged.pace || '');
-  const [feel, setFeel] = useState(logged.feel || '');
-  const [notes, setNotes] = useState(logged.notes || '');
-
-  const saveClick = (e) => {
-    e.stopPropagation();
-    onSave(dayKey, { miles, pace, feel, notes });
-    setExpanded(false);
-  };
-
-  const clearClick = (e) => {
-    e.stopPropagation();
-    setMiles(''); setPace(''); setFeel(''); setNotes('');
-    onClear(dayKey);
-    setExpanded(false);
-  };
-
-  return (
-    <div style={{ background: 'var(--bg2)', border: `1px solid ${logged.done ? '#a8dab5' : 'var(--border)'}`, borderRadius: '10px', overflow: 'hidden' }}>
-      <div onClick={() => setExpanded(!expanded)} style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>Day {day.d}</span>
-          <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '20px', background: '#d4f0dc', color: '#1e6b35', fontWeight: 500, textTransform: 'uppercase' }}>{day.type}</span>
-          <span style={{ fontSize: '14px', color: 'var(--text)' }}>{day.desc}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {logged.done && <span style={{ fontSize: '11px', color: 'var(--green)', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={14} /> Logged ({logged.miles} mi)</span>}
-          <span style={{ color: 'var(--text3)' }}>{expanded ? '▴' : '▾'}</span>
-        </div>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: '1rem', borderTop: '1px solid var(--border)', background: '#fafaf9' }}>
-          {day.workout && (
-            <div style={{ background: 'var(--bg3)', padding: '8px 12px', borderRadius: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text2)', marginBottom: '1rem' }}>
-              Workout Detail: {day.workout}
-            </div>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>Miles Run</label>
-              <input type="number" step="0.1" value={miles} onChange={e => setMiles(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border2)', borderRadius: '6px' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>Avg Pace</label>
-              <input type="text" value={pace} onChange={e => setPace(e.target.value)} placeholder="7:30/mi" style={{ padding: '8px', border: '1px solid var(--border2)', borderRadius: '6px' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>Effort (1-10)</label>
-              <input type="number" min="1" max="10" value={feel} onChange={e => setFeel(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border2)', borderRadius: '6px' }} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
-            <label style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>Workout Notes</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border2)', borderRadius: '6px', minHeight: '60px' }} />
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={saveClick} style={{ padding: '8px 16px', background: 'var(--accent)', border: 'none', borderRadius: '6px', color: '#fff', cursor: 'pointer', fontSize: '12px' }}>Save Log</button>
-            {logged.done && <button onClick={clearClick} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--red)', borderRadius: '6px', color: 'var(--red)', cursor: 'pointer', fontSize: '12px' }}>Clear</button>}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
