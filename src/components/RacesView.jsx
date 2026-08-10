@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { Trash2, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 export default function RacesView({ races, supabaseConnected, onRefresh }) {
   const [calendarType, setCalendarType] = useState('team'); // 'team' or 'personal'
@@ -125,7 +125,7 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
               key={`day-${dayNum}`} 
               onClick={() => handleDaySelect(dayNum)}
               style={{ 
-                background: 'var(--bg2)', minHeight: '85px', padding: '8px', display: 'flex', flexDirection: 'column', justify: 'space-between', justifyContent: 'space-between', cursor: 'pointer', border: date === dateStr ? '2px solid var(--red)' : 'none',
+                background: 'var(--bg2)', minHeight: '85px', padding: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer', border: date === dateStr ? '2px solid var(--red)' : 'none',
                 transition: 'background 0.1s'
               }}
               onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
@@ -162,7 +162,9 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
         {/* Left Side: Dynamic Add form */}
         <div>
           <form onSubmit={handleAddRace} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)' }}>Schedule Race Event</h3>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Calendar size={18} /> Schedule Race Event
+            </h3>
             
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="button" onClick={() => setCalendarType('team')} style={{ flex: 1, padding: '8px', border: '1px solid var(--border)', borderRadius: '6px', background: calendarType === 'team' ? 'var(--accent)' : 'var(--bg2)', color: calendarType === 'team' ? '#ffffff' : 'var(--text2)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>🛡️ Team Target</button>
@@ -171,7 +173,7 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Race Name</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. state championship" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. State Championship" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Scheduled Date (Click grid day to set)</label>
@@ -203,15 +205,17 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
 
         {/* Right Side: List overview of races for current year */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>Races This Year</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxH: '380px', overflowY: 'auto' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', borderBottom: '1px solid var(--border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={18} /> Races This Year
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
             {currentDisplayList.filter(r => new Date(r.date).getFullYear() === currentYear).map((r) => {
               const isTeam = (r.ag || 'team').toLowerCase() === 'team';
               return (
                 <div key={r.id || r.name} style={{ background: 'var(--bg2)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: `4px solid ${isTeam ? 'var(--accent)' : 'var(--red)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>{r.name} ({r.dist})</h4>
-                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{r.date} · {isTeam ? "Team Race" : "Personal Goal"}</span>
+                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{r.date} · {isTeam ? "Team" : "Personal"}</span>
                   </div>
                   {supabaseConnected && r.id && (
                     <button onClick={() => handleDeleteRace(r.id)} style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer' }}>
