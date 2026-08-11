@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, FileText } from 'lucide-react';
+import { Trash2, FileText, Upload } from 'lucide-react';
 
 export default function StrategiesView({ strategies, supabaseConnected, onRefresh }) {
   const [title, setTitle] = useState('');
@@ -18,7 +18,7 @@ export default function StrategiesView({ strategies, supabaseConnected, onRefres
       const { error } = await supabase.from('run_resources').insert({
         title,
         content,
-        cat: 'Strategy', // Hardcoded into category column for schema continuity
+        cat: 'Strategy',
         tags
       });
       if (!error) {
@@ -28,17 +28,28 @@ export default function StrategiesView({ strategies, supabaseConnected, onRefres
     }
   };
 
-  // Dynamic parser for copy-pasted Excel blocks (tab-separated) or Google Doc lines
+  // Browser-based file reader for plain text or .csv documents
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setRawPasteText(evt.target.result);
+      setImportStatus(`File "${file.name}" loaded successfully. Click Compile below to upload.`);
+    };
+    reader.readAsText(file);
+  };
+
   const handleBulkImport = async () => {
     if (!rawPasteText.trim() || !supabaseConnected) return;
-    setImportStatus('Processing pasted data...');
+    setImportStatus('Processing data into the database...');
 
     try {
       const lines = rawPasteText.split('\n').filter(line => line.trim() !== '');
       const listToInsert = [];
 
       lines.forEach((line) => {
-        // Splitting by Tabs (Excel) or Pipe Symbol (Google Docs formats)
         const parts = line.split(/\t|\|/).map(p => p.trim());
         if (parts.length >= 2) {
           listToInsert.push({
@@ -51,7 +62,7 @@ export default function StrategiesView({ strategies, supabaseConnected, onRefres
       });
 
       if (listToInsert.length === 0) {
-        setImportStatus('Failed: Ensure you copy-paste format as "Title | Plan Instructions"');
+        setImportStatus('Failed: Ensure columns are separated by tabs or vertical lines (|).');
         return;
       }
 
@@ -82,7 +93,7 @@ export default function StrategiesView({ strategies, supabaseConnected, onRefres
 
   return (
     <div>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>COACHING RACE PLANS</h2>
           <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Add and configure custom race plans, tactical guides, or mental cues for your athletes.</p>
@@ -95,18 +106,24 @@ export default function StrategiesView({ strategies, supabaseConnected, onRefres
         </button>
       </div>
 
-      {/* Spreadsheet / Doc Importer Panel */}
+      {/* CLIPBOARD & FILE IMPORTER */}
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>Excel & Docs Clipboard Importer</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>Excel, Docs, or CSV File Importer</h3>
           <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem', lineHeight: 1.5 }}>
-            Paste plans copied directly from your Google Docs or Excel rows. Ensure columns are separated by tabs (simply copy rows from Excel) or divided by a vertical line (|) like this: <br />
+            Upload a spreadsheet file (`.csv` or `.txt`) or paste plans directly. Ensure columns are separated by tabs or vertical lines (|) like this: <br />
             <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg3)', padding: '2px 4px' }}>Plan Name | Plan Details / Instructions | Tags</code>
           </p>
+          
+          <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>Upload Spreadsheet File (.csv, .txt):</label>
+            <input type="file" accept=".csv,.txt" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
+          </div>
+
           <textarea 
             value={rawPasteText} 
             onChange={e => setRawPasteText(e.target.value)} 
-            placeholder="Example:&#10;Corner Surge | Accelerate 5 steps immediately after turning corners | Tactics&#10;Finish Line Kick | Drive knees high, relax jaw in the final 300m | Speed" 
+            placeholder="Or paste rows manually here..." 
             style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border2)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} 
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
