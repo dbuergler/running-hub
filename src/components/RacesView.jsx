@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+
+// --- Bulletproof Custom Inline Calendar Icon ---
+const CalendarIcon = ({ size = 18, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 2v4" />
+    <path d="M16 2v4" />
+    <rect width="18" height="18" x="3" y="4" rx="2" />
+    <path d="M3 10h18" />
+  </svg>
+);
 
 export default function RacesView({ races, supabaseConnected, onRefresh }) {
   const [calendarType, setCalendarType] = useState('team'); // 'team' or 'personal'
-  
-  // Date states targeting August 2026 initially based on current timeline
   const [currentYear, setCurrentYear] = useState(2026);
   const [currentMonth, setCurrentMonth] = useState(7); // 0 = Jan, 7 = Aug
   
@@ -16,14 +24,13 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
   const [status, setStatus] = useState('upcoming');
   const [notes, setNotes] = useState('');
 
-  // Calendar Engine calculations
   const monthNames = [
     "January", "February", "March", "April", "May", "June", 
     "July", "August", "September", "October", "November", "December"
   ];
 
-  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // Weekday index for day 1
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate(); // Count of days
+  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
   const prevMonth = () => {
     if (currentMonth === 0) {
@@ -53,7 +60,7 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
         date,
         dist,
         status,
-        ag: calendarType, // Save calendar classification type inside the 'ag' database column
+        ag: calendarType,
         notes
       });
       if (!error) {
@@ -105,19 +112,16 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
           <div key={d} style={{ background: '#f8fafc', padding: '10px', textAlign: 'center', fontWeight: 600, fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{d}</div>
         ))}
         
-        {/* Fill leading blanks */}
         {Array.from({ length: firstDayIndex }).map((_, i) => (
           <div key={`empty-${i}`} style={{ background: 'var(--bg2)', minHeight: '85px', opacity: 0.5 }} />
         ))}
 
-        {/* Calendar days */}
         {Array.from({ length: daysInMonth }).map((_, idx) => {
           const dayNum = idx + 1;
           const formattedMonth = String(currentMonth + 1).padStart(2, '0');
           const formattedDay = String(dayNum).padStart(2, '0');
           const dateStr = `${currentYear}-${formattedMonth}-${formattedDay}`;
 
-          // Fetch races falling on this specific calendar date
           const dayRaces = currentDisplayList.filter(r => r.date === dateStr);
 
           return (
@@ -156,14 +160,12 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
         })}
       </div>
 
-      {/* INTERACTIVE CONTROLS SECTION */}
+      {/* CONTROLS SECTION */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-        
-        {/* Left Side: Dynamic Add form */}
         <div>
           <form onSubmit={handleAddRace} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Calendar size={18} /> Schedule Race Event
+              <CalendarIcon size={18} /> Schedule Race Event
             </h3>
             
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -203,10 +205,10 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
           </form>
         </div>
 
-        {/* Right Side: List overview of races for current year */}
+        {/* Right Side: List overview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', borderBottom: '1px solid var(--border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Calendar size={18} /> Races This Year
+            <CalendarIcon size={18} /> Races This Year
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
             {currentDisplayList.filter(r => new Date(r.date).getFullYear() === currentYear).map((r) => {
