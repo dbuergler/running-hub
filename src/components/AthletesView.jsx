@@ -27,9 +27,21 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh })
     }
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setCsvText(evt.target.result);
+      setImportStatus(`File "${file.name}" loaded successfully. Click Compile below to upload.`);
+    };
+    reader.readAsText(file);
+  };
+
   const handleBulkImport = async () => {
     if (!csvText.trim() || !supabaseConnected) return;
-    setImportStatus('Processing raw CSV...');
+    setImportStatus('Processing roster data...');
 
     try {
       const rows = csvText.split('\n').filter(line => line.trim() !== '');
@@ -76,7 +88,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh })
 
   return (
     <div>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TEAM ROSTER</h2>
           <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Coordinate athletes, grad cycles, and manage season spreadsheets.</p>
@@ -89,8 +101,14 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh })
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}><Database size={16} /> Bulk Spreadsheets Importer</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Copy and paste spreadsheet data as CSV below. Headers must be: <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg3)', padding: '2px 4px' }}>Name, Grad Year, Team, Primary Event, PR</code>.</p>
-          <textarea value={csvText} onChange={e => setCsvText(e.target.value)} placeholder="Name, Grad Year, Team, Primary Event, PR&#10;John Smith, 2027, Varsity, 5K, 16:42" style={{ width: '100%', minHeight: '120px', padding: '10px', border: '1px solid var(--border)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload a spreadsheet file (`.csv` or `.txt`) or paste rows directly. Headers must be: <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg3)', padding: '2px 4px' }}>Name, Grad Year, Team, Primary Event, PR</code>.</p>
+          
+          <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>Upload Spreadsheet File (.csv, .txt):</label>
+            <input type="file" accept=".csv,.txt" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
+          </div>
+
+          <textarea value={csvText} onChange={e => setCsvText(e.target.value)} placeholder="Or paste rows manually here..." style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button onClick={handleBulkImport} disabled={!supabaseConnected} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Upload Data</button>
             {importStatus && <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)' }}>{importStatus}</span>}
