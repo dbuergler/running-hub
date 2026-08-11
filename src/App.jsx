@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { Award, RefreshCw, Flame, Users } from 'lucide-react';
+import { Calendar, Award, RefreshCw, Flame, Users, Activity } from 'lucide-react';
 
 // Import our modular view components
 import DayItem from './components/DayItem';
@@ -8,32 +8,14 @@ import StrategiesView from './components/StrategiesView';
 import RacesView from './components/RacesView';
 import AthletesView from './components/AthletesView';
 import AboutView from './components/AboutView';
+import CoachingCalculator from './components/CoachingCalculator';
 
-// --- Bulletproof Custom Inline Calendar Icon ---
-const CalendarIcon = ({ size = 18, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 2v4" />
-    <path d="M16 2v4" />
-    <rect width="18" height="18" x="3" y="4" rx="2" />
-    <path d="M3 10h18" />
-  </svg>
-);
-
-const WORKOUT_PLAN = [
-  { w: 1, d: 1, type: 'easy', desc: '0–3 miles easy run' },
-  { w: 1, d: 2, type: 'easy', desc: '4–6 miles easy run' },
-  { w: 1, d: 3, type: 'intervals', desc: '6–7 miles with intervals', workout: '2mi warmup · 6×400m @1:35 (6:22/mi), 200m rec · 2mi cooldown' },
-  { w: 1, d: 4, type: 'easy', desc: '0–3 miles easy run' },
-  { w: 1, d: 5, type: 'easy', desc: '4 miles easy run' },
-  { w: 1, d: 6, type: 'rest', desc: 'Rest' },
-  { w: 1, d: 7, type: 'lsd', desc: '10 miles LSD' },
-];
-
+// --- Dynamic 16-Week Plan Generator ---
 const getWorkoutForDay = (w, d) => {
   if (d === 6) return { type: 'rest', desc: 'Rest Day' };
   if (d === 7) {
     const miles = 8 + Math.min(w, 8);
-    return { type: 'long', desc: `Long Slow Distance — ${miles} miles`, workout: `Settle into comfortable Z2 pace.` };
+    return { type: 'long', desc: `Long Slow Distance — ${miles} miles`, workout: `Settle into comfortable Z2 aerobic pace. Practice race-day hydration every 3 miles.` };
   }
   if (d === 3) {
     if (w % 2 === 0) {
@@ -95,7 +77,7 @@ export default function App() {
     document.documentElement.style.setProperty('--red', '#c2185b'); // Crimson Red
     document.documentElement.style.setProperty('--blue', '#0f2b5c');
 
-    // Browser Favicon Setup
+    // Favicon Setup
     const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
     link.type = 'image/svg+xml';
     link.rel = 'shortcut icon';
@@ -250,7 +232,7 @@ export default function App() {
         </div>
       )}
 
-      {/* NAVBAR */}
+      {/* NAVBAR WITH "RUN/" TEXT REMOVED */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3px solid var(--red)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '58px', justifyContent: 'space-between' }}>
           
@@ -260,12 +242,11 @@ export default function App() {
               <path d="M25 65 L45 35 L55 55 L75 25" stroke="var(--accent)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M45 65 L55 45 L65 55 L85 25" stroke="var(--red)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700, letterSpacing: '0.04em', color: '#ffffff' }}>RUN/</span>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: supabaseConnected ? '#4ade80' : '#f87171', border: '1px solid #ffffff' }} />
           </div>
 
           <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
-            {['tracker', 'strategies', 'races', 'athletes', 'about'].map((tab) => (
+            {['tracker', 'strategies', 'races', 'athletes', 'paces', 'about'].map((tab) => (
               <span 
                 key={tab}
                 onClick={() => setCurrentPage(tab)} 
@@ -283,9 +264,10 @@ export default function App() {
         </div>
       </nav>
 
-      {/* CONTENT */}
-      <main style={{ flex: 1, paddingTop: '58px', maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '58px 2rem 4rem' }}>
+      {/* CONTENT WITH INCREASED SPACIOUS PADDING */}
+      <main style={{ flex: 1, paddingTop: '80px', maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '80px 2rem 4rem' }}>
         
+        {/* HOME VIEW */}
         {currentPage === 'home' && (
           <div style={{ padding: '2rem 0' }}>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(44px, 8vw, 80px)', fontWeight: 700, lineHeight: 0.95, textTransform: 'uppercase', marginBottom: '1.5rem', color: 'var(--accent)' }}>
@@ -296,13 +278,13 @@ export default function App() {
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
               <div onClick={() => setCurrentPage('tracker')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
-                <CalendarIcon color="var(--accent)" style={{ marginBottom: '10px' }} />
+                <Activity style={{ color: 'var(--accent)', marginBottom: '10px' }} />
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Training Logs</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>Log running logs from the 16-week cycle.</p>
               </div>
               <div onClick={() => setCurrentPage('strategies')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--red)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
                 <Award style={{ color: 'var(--red)', marginBottom: '10px' }} />
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Race Strategies</h3>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Race Plans</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>View and configure custom strategy card notes.</p>
               </div>
               <div onClick={() => setCurrentPage('athletes')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
@@ -316,9 +298,9 @@ export default function App() {
 
         {currentPage === 'tracker' && (
           <div>
-            <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TRAINING TRACKER</h2>
-              <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Log workout metrics, times, efforts, and details. Click any card to customize or edit the plan.</p>
+              <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Log workout metrics, times, efforts, and details for the selected training cycle.</p>
             </div>
 
             {/* MONTH FILTER */}
@@ -397,6 +379,10 @@ export default function App() {
           <AthletesView 
             athletes={athletes} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
           />
+        )}
+
+        {currentPage === 'paces' && (
+          <CoachingCalculator />
         )}
 
         {currentPage === 'about' && (
