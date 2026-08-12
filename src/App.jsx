@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { Award, RefreshCw, Flame, Users, Activity } from 'lucide-react';
+import { Award, RefreshCw, Flame, Users, Activity, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Import our modular view components
 import DayItem from './components/DayItem';
@@ -14,7 +14,7 @@ import CoachingCalculator from './components/CoachingCalculator';
 const getWorkoutForDay = (w, d) => {
   if (d === 6) return { type: 'rest', desc: 'Rest Day' };
   if (d === 7) {
-    const miles = 8 + Math.min(w, 8); // Long run builds from 9 to 16 miles
+    const miles = 8 + Math.min(w, 8);
     return { type: 'long', desc: `Long Slow Distance — ${miles} miles`, workout: `Settle into comfortable Z2 aerobic pace. Practice race-day hydration every 3 miles.` };
   }
   if (d === 3) {
@@ -40,32 +40,39 @@ const getDayPlan = (w, d) => {
   return { w, d, ...base };
 };
 
-// --- Exact calendar months mapped to your 16-week cycle ending on Nov 7th ---
-const SEASON_MONTHS = [
-  { id: 'july', name: 'July', weeks: [1, 2] },
-  { id: 'august', name: 'August', weeks: [3, 4, 5, 6] },
-  { id: 'september', name: 'September', weeks: [7, 8, 9, 10] },
-  { id: 'october', name: 'October', weeks: [11, 12, 13, 14] },
-  { id: 'november', name: 'November', weeks: [15, 16] }
-];
+// Map actual calendar dates to 16-week cycle starting July 20, 2026
+const getPlanDayFromDate = (year, month, dayNum) => {
+  const date = new Date(Date.UTC(year, month, dayNum));
+  const start = new Date(Date.UTC(2026, 6, 20)); // July 20, 2026
+  const diffTime = date.getTime() - start.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays >= 0 && diffDays < 112) {
+    const week = Math.floor(diffDays / 7) + 1;
+    const day = (diffDays % 7) + 1;
+    return { week, day, key: `w${week}d${day}` };
+  }
+  return null;
+};
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
-  
-  // Set default load filters automatically to August / Week 4 based on August 11, 2026 date
-  const [activeMonth, setActiveMonth] = useState('august');
-  const [activeWeek, setActiveWeek] = useState(4);
-  
   const [logs, setLogs] = useState({});
   const [planOverrides, setPlanOverrides] = useState({});
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: '', visible: false });
 
-  // Dynamic states
+  // Calendar State for Training Tracker
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(7); // Default to August (7)
+  const [selectedDayInfo, setSelectedDayInfo] = useState(null); // { week, day, key, plan, dateStr }
+
+  // Dynamic state caches
   const [strategies, setStrategies] = useState([]);
   const [races, setRaces] = useState([]);
   const [athletes, setAthletes] = useState([]);
+  const [xcResults, setXcResults] = useState([]);
   const [aboutProfile, setAboutProfile] = useState({
     name: 'Coach Daniel',
     role: 'Head Cross Country & Track Coach',
@@ -74,7 +81,9 @@ export default function App() {
     achievements: '3x State Qualifier Appearances · 12 All-Conference Runners coached'
   });
 
-  // Inject Team Colors (Red, Blue, & White)
+  const monthNames = ["July", "August", "September", "October", "November"];
+  const calendarMonths = [6, 7, 8, 9, 10]; // July (6) to Nov (10)
+
   useEffect(() => {
     document.documentElement.style.setProperty('--bg', '#f1f5f9');
     document.documentElement.style.setProperty('--bg2', '#ffffff');
@@ -84,17 +93,10 @@ export default function App() {
     document.documentElement.style.setProperty('--text', '#0f172a');
     document.documentElement.style.setProperty('--text2', '#334155');
     document.documentElement.style.setProperty('--text3', '#64748b');
-    document.documentElement.style.setProperty('--accent', '#0f2b5c'); // Deep Royal Blue
-    document.documentElement.style.setProperty('--accent2', '#1e40af'); // Vibrant Blue
-    document.documentElement.style.setProperty('--red', '#c2185b'); // Crimson Red
+    document.documentElement.style.setProperty('--accent', '#0f2b5c'); 
+    document.documentElement.style.setProperty('--accent2', '#1e40af'); 
+    document.documentElement.style.setProperty('--red', '#c2185b'); 
     document.documentElement.style.setProperty('--blue', '#0f2b5c');
-
-    // Favicon Setup
-    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
-    link.type = 'image/svg+xml';
-    link.rel = 'shortcut icon';
-    link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23c2185b"><circle cx="50" cy="50" r="40" fill="%230f2b5c"/><path d="M35 65 L45 35 L55 55 L65 35" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
-    document.getElementsByTagName('head')[0].appendChild(link);
   }, []);
 
   useEffect(() => {
@@ -161,6 +163,9 @@ export default function App() {
       const { data: athleteRows } = await supabase.from('run_athletes').select('*');
       if (athleteRows) setAthletes(athleteRows);
 
+      const { data: xcRows } = await supabase.from('run_xc').select('*');
+      if (xcRows) setXcResults(xcRows);
+
       const { data: settingRows } = await supabase.from('run_settings').select('*').eq('id', 'about').single();
       if (settingRows && settingRows.data) setAboutProfile(settingRows.data);
 
@@ -190,6 +195,7 @@ export default function App() {
         notes: logData.notes
       });
     }
+    fetchAllData();
   };
 
   const handleClearLog = async (dayKey) => {
@@ -202,6 +208,7 @@ export default function App() {
     if (supabaseConnected) {
       await supabase.from('run_logs').delete().eq('id', dayKey);
     }
+    fetchAllData();
   };
 
   const handleSavePlanOverride = async (dayKey, overrideData) => {
@@ -213,18 +220,18 @@ export default function App() {
     if (supabaseConnected) {
       await supabase.from('run_plan_overrides').upsert({
         id: dayKey,
-        w: activeWeek,
+        w: overrideData.w,
         d: overrideData.d,
         type: overrideData.type,
         desc: overrideData.desc,
         workout: overrideData.workout
       });
     }
+    fetchAllData();
   };
 
-  // Find the selected month block structure to safely map its week sub-pills
-  const currentMonthObj = SEASON_MONTHS.find(m => m.id === activeMonth) || SEASON_MONTHS[1];
-  const weeksInMonth = currentMonthObj.weeks;
+  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -309,82 +316,129 @@ export default function App() {
           </div>
         )}
 
-        {/* TRACKER VIEW */}
+        {/* TRACKER VIEW - REDESIGNED AS EDITABLE CALENDAR */}
         {currentPage === 'tracker' && (
           <div>
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TRAINING TRACKER</h2>
-              <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Log workout metrics, times, efforts, and details. Click any card to customize or edit the plan.</p>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TRAINING LOG CALENDAR</h2>
+              <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan and log your training cycle inside an interactive calendar grid. Click any calendar day to log metrics or edit the prescription.</p>
             </div>
 
-            {/* MONTH FILTER REPLACED WITH DYNAMIC SEASON MONTH BLUEPRINTS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginBottom: '1.5rem' }}>
-              {SEASON_MONTHS.map((m) => (
+            {/* MONTH FILTER BUTTONS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginBottom: '1.5rem' }}>
+              {calendarMonths.map((mIdx) => (
                 <button
-                  key={m.id}
+                  key={mIdx}
                   onClick={() => {
-                    setActiveMonth(m.id);
-                    setActiveWeek(m.weeks[0]); // Automatically select the first week of that month block
+                    setCurrentMonth(mIdx);
+                    setSelectedDayInfo(null);
                   }}
                   style={{
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    background: activeMonth === m.id ? 'var(--accent)' : 'var(--bg2)',
-                    color: activeMonth === m.id ? '#ffffff' : 'var(--text2)',
-                    fontWeight: 600,
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '15px',
-                    cursor: 'pointer'
+                    padding: '12px', borderRadius: '8px', border: '1px solid var(--border)',
+                    background: currentMonth === mIdx ? 'var(--accent)' : 'var(--bg2)',
+                    color: currentMonth === mIdx ? '#ffffff' : 'var(--text2)',
+                    fontWeight: 600, fontFamily: 'var(--font-display)', fontSize: '15px', cursor: 'pointer'
                   }}
                 >
-                  {m.name} <span style={{ fontSize: '11px', display: 'block', fontWeight: 400, opacity: 0.8 }}>Wks {m.weeks[0]}–{m.weeks[m.weeks.length - 1]}</span>
+                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][mIdx]}
                 </button>
               ))}
             </div>
 
-            {/* WEEK SELECTOR */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.5rem', borderBottom: '1px dashed var(--border)', paddingBottom: '12px' }}>
-              {weeksInMonth.map((wk) => (
-                <button
-                  key={wk}
-                  onClick={() => setActiveWeek(wk)}
-                  style={{
-                    padding: '6px 14px', borderRadius: '20px', border: '1px solid var(--border)',
-                    background: activeWeek === wk ? 'var(--red)' : 'transparent',
-                    color: activeWeek === wk ? '#ffffff' : 'var(--text3)',
-                    cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600
-                  }}
-                >
-                  Week {wk}
-                </button>
+            {/* CALENDAR GRID */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border2)', border: '1px solid var(--border2)', backgroundColor: 'var(--bg3)', marginBottom: '2rem' }}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                <div key={d} style={{ background: '#f8fafc', padding: '10px', textAlign: 'center', fontWeight: 600, fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{d}</div>
               ))}
-            </div>
+              
+              {/* Fill blanks */}
+              {Array.from({ length: firstDayIndex }).map((_, i) => (
+                <div key={`tracker-empty-${i}`} style={{ background: 'var(--bg2)', minHeight: '95px', opacity: 0.5 }} />
+              ))}
 
-            {/* DAY LIST */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[1, 2, 3, 4, 5, 6, 7].map((dayNum) => {
-                const dayKey = `w${activeWeek}d${dayNum}`;
-                const defaultPlan = getDayPlan(activeWeek, dayNum);
-                const overridePlan = planOverrides[dayKey] || {};
-                const dayPlan = { ...defaultPlan, ...overridePlan };
-                const loggedVal = logs[dayKey] || {};
+              {/* Day cells */}
+              {Array.from({ length: daysInMonth }).map((_, idx) => {
+                const dayNum = idx + 1;
+                const dateInfo = getPlanDayFromDate(currentYear, currentMonth, dayNum);
+                
+                let dayPlan = null;
+                let log = {};
+                if (dateInfo) {
+                  const defaultPlan = getDayPlan(dateInfo.week, dateInfo.day);
+                  const overridePlan = planOverrides[dateInfo.key] || {};
+                  dayPlan = { ...defaultPlan, ...overridePlan };
+                  log = logs[dateInfo.key] || {};
+                }
+
+                const badgeColors = {
+                  easy: '#e0f2fe', long: '#e0e7ff', tempo: '#fef3c7', intervals: '#fce7f3', hills: '#f3e8ff', rest: '#e2e8f0'
+                };
+                const bgTypeColor = dayPlan ? (badgeColors[dayPlan.type] || '#f1f5f9') : '#ffffff';
 
                 return (
-                  <DayItem 
-                    key={dayKey} dayKey={dayKey} day={dayPlan} logged={loggedVal} 
-                    onSave={handleSaveLog} onClear={handleClearLog} 
-                    onSavePlanOverride={handleSavePlanOverride}
-                  />
+                  <div
+                    key={`tracker-day-${dayNum}`}
+                    onClick={() => {
+                      if (dateInfo && dayPlan) {
+                        setSelectedDayInfo({
+                          week: dateInfo.week,
+                          day: dateInfo.day,
+                          key: dateInfo.key,
+                          plan: dayPlan,
+                          dateStr: `${monthNames[currentMonth - 6]} ${dayNum}, ${currentYear}`
+                        });
+                      }
+                    }}
+                    style={{
+                      background: 'var(--bg2)', minHeight: '95px', padding: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                      cursor: dateInfo ? 'pointer' : 'default',
+                      border: selectedDayInfo?.key === dateInfo?.key && dateInfo ? '2.5px solid var(--accent)' : 'none',
+                      opacity: dateInfo ? 1 : 0.4
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>{dayNum}</span>
+                      {log.done && <span style={{ fontSize: '10px', color: 'var(--green)' }}>✓ {log.miles}m</span>}
+                    </div>
+
+                    {dayPlan ? (
+                      <div style={{ 
+                        fontSize: '9px', padding: '3px 4px', borderRadius: '4px', background: bgTypeColor, color: 'var(--text)', 
+                        fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap'
+                      }}>
+                        {dayPlan.desc}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '9px', color: 'var(--text3)', fontStyle: 'italic' }}>No training</span>
+                    )}
+                  </div>
                 );
               })}
             </div>
+
+            {/* EDITABLE SELECTION DRAWER */}
+            {selectedDayInfo && (
+              <div style={{ marginTop: '1.5rem', borderTop: '2px solid var(--accent)', paddingTop: '1.5rem' }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1rem' }}>
+                  Logs and Customization for {selectedDayInfo.dateStr} (Week {selectedDayInfo.week}, Day {selectedDayInfo.day})
+                </h3>
+                <DayItem 
+                  key={selectedDayInfo.key}
+                  dayKey={selectedDayInfo.key}
+                  day={selectedDayInfo.plan}
+                  logged={logs[selectedDayInfo.key] || {}}
+                  onSave={handleSaveLog}
+                  onClear={handleClearLog}
+                  onSavePlanOverride={handleSavePlanOverride}
+                />
+              </div>
+            )}
           </div>
         )}
 
         {currentPage === 'strategies' && (
           <StrategiesView 
-            strategies={strategies} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
+            strategies={strategies} xcResults={xcResults} athletes={athletes} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
           />
         )}
 
