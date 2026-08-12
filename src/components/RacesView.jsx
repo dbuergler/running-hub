@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
-// --- Bulletproof Custom Inline Calendar Icon ---
 const CalendarIcon = ({ size = 18, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M8 2v4" />
@@ -13,7 +12,7 @@ const CalendarIcon = ({ size = 18, color = "currentColor" }) => (
 );
 
 export default function RacesView({ races, supabaseConnected, onRefresh }) {
-  const [calendarType, setCalendarType] = useState('team'); // 'team' or 'personal'
+  const [calendarType, setCalendarType] = useState('team');
   const [currentYear, setCurrentYear] = useState(2026);
   const [currentMonth, setCurrentMonth] = useState(7); // 0 = Jan, 7 = Aug
   
@@ -55,7 +54,9 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
     if (!name.trim() || !date) return;
 
     if (supabaseConnected) {
+      // FIX: Generate unique ID on the frontend using Date.now() to bypass the null primary key constraint
       const { error } = await supabase.from('run_races').insert({
+        id: Date.now(), 
         name,
         date,
         dist,
@@ -91,10 +92,11 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
   ];
 
   const currentDisplayList = supabaseConnected ? races : defaultRaces;
+  const filteredRaces = currentDisplayList.filter(r => (r.ag || 'team').toLowerCase() === calendarType);
 
   return (
     <div>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TEAM & PERSONAL CALENDARS</h2>
         <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan upcoming events in an interactive grid view. Toggle between lists or add races directly by clicking any calendar day.</p>
       </div>
