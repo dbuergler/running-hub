@@ -48,7 +48,6 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
     { year: '2024', title: 'Marion County Coach of the Year' }
   ];
 
-  // FIX: Safely parse athlete PR times without crashing if athletes array is undefined
   const parseTimeToSeconds = (t) => {
     if (!t) return 999999;
     const parts = t.split(':').map(Number);
@@ -161,7 +160,7 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
               <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight 700, color: 'var(--accent)', marginBottom: '12px' }}>Log New Team Honor</h4>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '12px' }}>Log New Team Honor</h4>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                   <input type="text" value={newYear} onChange={e => setNewYear(e.target.value)} placeholder="Year" style={{ width: '80px', padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
                   <input type="text" value={newHonor} onChange={e => setNewHonor(e.target.value)} placeholder="e.g. Marion County Champions" style={{ flex: 1, padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
@@ -172,7 +171,7 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {dynamicHonors.map((item, index) => (
                   <div key={index} style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'var(--bg2)', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border)', position: 'relative' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight 700, color: 'var(--red)', minWidth: '40px' }}>{item.year}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: 'var(--red)', minWidth: '40px' }}>{item.year}</span>
                     <span style={{ fontSize: '13px', color: 'var(--text2)', fontWeight: 600 }}>{item.title}</span>
                     <button onClick={() => handleDeleteHonor(index)} style={{ border: 'none', background: 'none', color: 'var(--text3)', cursor: 'pointer', marginLeft: 'auto' }}><Trash2 size={13} /></button>
                   </div>
