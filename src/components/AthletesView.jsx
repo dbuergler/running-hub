@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Upload, Database, Trash2 } from 'lucide-react';
+import { Upload, Database, Trash2, Trophy } from 'lucide-react';
 
 export default function AthletesView({ athletes, supabaseConnected, onRefresh, showToast }) {
   const [csvText, setCsvText] = useState('');
@@ -58,7 +58,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
 
       lines.forEach((line, index) => {
         const cols = line.split(/[,\t|]/).map(c => c.trim());
-        if (cols.length === 0 || cols[0].toLowerCase().includes('name')) return; // skip header columns if present
+        if (cols.length === 0 || cols[0].toLowerCase().includes('name')) return;
 
         let athName = '';
         let athGrad = '';
@@ -117,16 +117,37 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
     }
   };
 
+  // Team Stats Calculations
+  const totalRoster = athletes.length;
+  const varsityCount = athletes.filter(a => a.team === 'Varsity').length;
+  const jvCount = athletes.filter(a => a.team === 'JV').length;
+
   return (
     <div>
       <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TEAM ROSTER</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TEAM ROSTER & STATS</h2>
           <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Coordinate athletes, grad cycles, and manage season spreadsheets.</p>
         </div>
-        <button onClick={() => setShowImporter(!showImporter)} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <button onClick={() => setShowImporter(!showImporter)} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Upload size={14} /> {showImporter ? "Close Roster Importer" : "Bulk Upload Season Data"}
         </button>
+      </div>
+
+      {/* TEAM SQUAD QUICK STATS BAR */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        <div style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '5px solid var(--accent)' }}>
+          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>TOTAL ATHLETES</span>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'var(--accent)', marginTop: '2px' }}>{totalRoster} Runners</h3>
+        </div>
+        <div style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '5px solid var(--red)' }}>
+          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>VARSITY SQUAD</span>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'var(--red)', marginTop: '2px' }}>{varsityCount} Runners</h3>
+        </div>
+        <div style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '5px solid var(--accent2)' }}>
+          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>JV / FRESHMAN</span>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'var(--accent2)', marginTop: '2px' }}>{jvCount} Runners</h3>
+        </div>
       </div>
 
       {showImporter && (
@@ -178,7 +199,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', alignContent: 'start' }}>
           {athletes.map((a) => (
-            <div key={a.id || a.name} style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderTop: `4px solid ${a.team === 'Varsity' ? 'var(--accent)' : 'var(--text3)'}`, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.05)' }}>
+            <div key={a.id || a.name} className="card-interactive" style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderTop: `4px solid ${a.team === 'Varsity' ? 'var(--accent)' : 'var(--text3)'}`, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>Grad: {a.grad || '—'}</span>
                 <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: '4px', background: 'var(--bg3)' }}>{a.team}</span>
