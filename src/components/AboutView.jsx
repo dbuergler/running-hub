@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Edit2, MapPin, Trophy, User, Megaphone, Plus, Trash2, Heart, Award } from 'lucide-react';
+import { Edit2, MapPin, Trophy, User, Megaphone, Plus, Trash2, Award } from 'lucide-react';
 import { RoncalliLogo } from '../App';
 
-export default function AboutView({ profile, athletes, supabaseConnected, onSaveProfile, showToast }) {
+export default function AboutView({ profile, athletes = [], supabaseConnected, onSaveProfile, showToast }) {
   const [editing, setEditing] = useState(false);
   
   // Profile forms
@@ -48,7 +48,7 @@ export default function AboutView({ profile, athletes, supabaseConnected, onSave
     { year: '2024', title: 'Marion County Coach of the Year' }
   ];
 
-  // LEADERBOARD GENERATOR: Parse time strings (e.g., "16:42") to extract and sort the Top 5 roster
+  // FIX: Safely parse athlete PR times without crashing if athletes array is undefined
   const parseTimeToSeconds = (t) => {
     if (!t) return 999999;
     const parts = t.split(':').map(Number);
@@ -56,7 +56,8 @@ export default function AboutView({ profile, athletes, supabaseConnected, onSave
     return parts[0] * 60 + parts[1];
   };
 
-  const sortedLeaderboard = [...athletes]
+  const safeAthletes = Array.isArray(athletes) ? athletes : [];
+  const sortedLeaderboard = [...safeAthletes]
     .filter(a => a.xcpr)
     .sort((a, b) => parseTimeToSeconds(a.xcpr) - parseTimeToSeconds(b.xcpr))
     .slice(0, 5);
@@ -107,7 +108,7 @@ export default function AboutView({ profile, athletes, supabaseConnected, onSave
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
             
-            {/* Visual card */}
+            {/* Visual card featuring Roncalli R logo */}
             <div style={{ background: 'var(--accent)', color: '#ffffff', borderRadius: '15px', padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', borderBottom: '6px solid var(--red)', boxShadow: '0 10px 15px -3px rgba(15,43,92,0.15)' }}>
               <RoncalliLogo size={80} />
               <div style={{ textAlign: 'center' }}>
@@ -134,7 +135,6 @@ export default function AboutView({ profile, athletes, supabaseConnected, onSave
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Trophy size={20} /> TEAM 5K LEADERBOARD</h3>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-              {/* Leaderboard display list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', gridColumn: 'span 2' }}>
                 {sortedLeaderboard.map((item, index) => (
                   <div key={item.id || index} style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'var(--bg2)', padding: '12px 18px', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: index === 0 ? '5px solid #fbbf24' : '5px solid var(--accent)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
@@ -161,7 +161,7 @@ export default function AboutView({ profile, athletes, supabaseConnected, onSave
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
               <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '12px' }}>Log New Team Honor</h4>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight 700, color: 'var(--accent)', marginBottom: '12px' }}>Log New Team Honor</h4>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                   <input type="text" value={newYear} onChange={e => setNewYear(e.target.value)} placeholder="Year" style={{ width: '80px', padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
                   <input type="text" value={newHonor} onChange={e => setNewHonor(e.target.value)} placeholder="e.g. Marion County Champions" style={{ flex: 1, padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
@@ -172,7 +172,7 @@ export default function AboutView({ profile, athletes, supabaseConnected, onSave
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {dynamicHonors.map((item, index) => (
                   <div key={index} style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'var(--bg2)', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border)', position: 'relative' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: 'var(--red)', minWidth: '40px' }}>{item.year}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight 700, color: 'var(--red)', minWidth: '40px' }}>{item.year}</span>
                     <span style={{ fontSize: '13px', color: 'var(--text2)', fontWeight: 600 }}>{item.title}</span>
                     <button onClick={() => handleDeleteHonor(index)} style={{ border: 'none', background: 'none', color: 'var(--text3)', cursor: 'pointer', marginLeft: 'auto' }}><Trash2 size={13} /></button>
                   </div>
