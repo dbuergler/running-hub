@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Edit2, MapPin, Trophy, User, Megaphone, Plus, Trash2 } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { Edit2, MapPin, Trophy, User, Megaphone, Plus, Trash2, Heart, Award } from 'lucide-react';
+import { RoncalliLogo } from '../App';
 
-export default function AboutView({ profile, supabaseConnected, onSaveProfile, showToast }) {
+export default function AboutView({ profile, athletes, supabaseConnected, onSaveProfile, showToast }) {
   const [editing, setEditing] = useState(false);
   
   // Profile forms
@@ -21,7 +21,7 @@ export default function AboutView({ profile, supabaseConnected, onSaveProfile, s
     e.preventDefault();
     onSaveProfile({ 
       name, role, location, bio, achievements, weeklyMessage, 
-      accomplishments: profile.accomplishments || [] 
+      accomplishments: profile.accomplishments || []
     });
     setEditing(false);
   };
@@ -48,6 +48,19 @@ export default function AboutView({ profile, supabaseConnected, onSaveProfile, s
     { year: '2024', title: 'Marion County Coach of the Year' }
   ];
 
+  // LEADERBOARD GENERATOR: Parse time strings (e.g., "16:42") to extract and sort the Top 5 roster
+  const parseTimeToSeconds = (t) => {
+    if (!t) return 999999;
+    const parts = t.split(':').map(Number);
+    if (parts.length !== 2) return 999999;
+    return parts[0] * 60 + parts[1];
+  };
+
+  const sortedLeaderboard = [...athletes]
+    .filter(a => a.xcpr)
+    .sort((a, b) => parseTimeToSeconds(a.xcpr) - parseTimeToSeconds(b.xcpr))
+    .slice(0, 5);
+
   return (
     <div>
       <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -56,7 +69,7 @@ export default function AboutView({ profile, supabaseConnected, onSaveProfile, s
           <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Update and view your dynamic profile credentials, philosophy, and achievements.</p>
         </div>
         {!editing && (
-          <button onClick={() => setEditing(true)} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button onClick={() => setEditing(true)} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Edit2 size={14} /> Edit Profile
           </button>
         )}
@@ -96,9 +109,7 @@ export default function AboutView({ profile, supabaseConnected, onSaveProfile, s
             
             {/* Visual card */}
             <div style={{ background: 'var(--accent)', color: '#ffffff', borderRadius: '15px', padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', borderBottom: '6px solid var(--red)', boxShadow: '0 10px 15px -3px rgba(15,43,92,0.15)' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, color: 'var(--accent)' }}>
-                {profile.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
-              </div>
+              <RoncalliLogo size={80} />
               <div style={{ textAlign: 'center' }}>
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700 }}>{profile.name}</h3>
                 <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>{profile.role}</p>
@@ -118,22 +129,46 @@ export default function AboutView({ profile, supabaseConnected, onSaveProfile, s
             </div>
           </div>
 
-          {/* DYNAMIC ACCOMPLISHMENTS TIMELINE */}
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Trophy size={20} /> TEAM CHAMPIONSHIPS & HONORS</h3>
+          {/* DYNAMIC TEAM LEADERBOARD */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '2.5rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Trophy size={20} /> TEAM 5K LEADERBOARD</h3>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-              {/* Form */}
+              {/* Leaderboard display list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', gridColumn: 'span 2' }}>
+                {sortedLeaderboard.map((item, index) => (
+                  <div key={item.id || index} style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'var(--bg2)', padding: '12px 18px', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: index === 0 ? '5px solid #fbbf24' : '5px solid var(--accent)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', fontWeight: 700, color: index === 0 ? '#fbbf24' : 'var(--text2)', minWidth: '30px' }}>#{index + 1}</span>
+                    <div>
+                      <span style={{ fontSize: '14px', color: 'var(--text)', fontWeight: 700 }}>{item.name}</span>
+                      <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', display: 'block' }}>{item.team} · Class of {item.grad}</span>
+                    </div>
+                    <span style={{ fontSize: '16px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--red)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {index === 0 && <Trophy size={16} color="#fbbf24" />} {item.xcpr}
+                    </span>
+                  </div>
+                ))}
+                {sortedLeaderboard.length === 0 && (
+                  <p style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '13px', padding: '2rem 0' }}>No athletes with logged PRs found on the roster yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* DYNAMIC ACCOMPLISHMENTS TIMELINE */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '2.5rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Award size={20} /> TEAM CHAMPIONSHIPS & HONORS</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
               <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
                 <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '12px' }}>Log New Team Honor</h4>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                   <input type="text" value={newYear} onChange={e => setNewYear(e.target.value)} placeholder="Year" style={{ width: '80px', padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
                   <input type="text" value={newHonor} onChange={e => setNewHonor(e.target.value)} placeholder="e.g. Marion County Champions" style={{ flex: 1, padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
                 </div>
-                <button onClick={handleAddHonor} style={{ width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><Plus size={14} /> Add Achievement</button>
+                <button onClick={handleAddHonor} className="btn-interactive" style={{ width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><Plus size={14} /> Add Achievement</button>
               </div>
 
-              {/* Timeline list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {dynamicHonors.map((item, index) => (
                   <div key={index} style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'var(--bg2)', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border)', position: 'relative' }}>
