@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { Award, RefreshCw, Flame, Users, Activity, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Award, RefreshCw, Flame, Users, Activity } from 'lucide-react';
 
 // Import our modular view components
 import DayItem from './components/DayItem';
@@ -10,7 +10,16 @@ import AthletesView from './components/AthletesView';
 import AboutView from './components/AboutView';
 import CoachingCalculator from './components/CoachingCalculator';
 
-// --- Dynamic 16-Week Plan Generator ---
+// --- Bulletproof Custom Inline Calendar Icon ---
+const CalendarIcon = ({ size = 18, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 2v4" />
+    <path d="M16 2v4" />
+    <rect width="18" height="18" x="3" y="4" rx="2" />
+    <path d="M3 10h18" />
+  </svg>
+);
+
 const getWorkoutForDay = (w, d) => {
   if (d === 6) return { type: 'rest', desc: 'Rest Day' };
   if (d === 7) {
@@ -55,20 +64,25 @@ const getPlanDayFromDate = (year, month, dayNum) => {
   return null;
 };
 
+const SEASON_MONTHS = [
+  { id: 'july', name: 'July', weeks: [1, 2] },
+  { id: 'august', name: 'August', weeks: [3, 4, 5, 6] },
+  { id: 'september', name: 'September', weeks: [7, 8, 9, 10] },
+  { id: 'october', name: 'October', weeks: [11, 12, 13, 14] },
+  { id: 'november', name: 'November', weeks: [15, 16] }
+];
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
+  const [activeMonth, setActiveMonth] = useState('august');
+  const [activeWeek, setActiveWeek] = useState(4);
   const [logs, setLogs] = useState({});
   const [planOverrides, setPlanOverrides] = useState({});
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: '', visible: false });
 
-  // Calendar State for Training Tracker
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(7); // Default to August (7)
-  const [selectedDayInfo, setSelectedDayInfo] = useState(null); // { week, day, key, plan, dateStr }
-
-  // Dynamic state caches
+  // Dynamic states
   const [strategies, setStrategies] = useState([]);
   const [races, setRaces] = useState([]);
   const [athletes, setAthletes] = useState([]);
@@ -81,9 +95,7 @@ export default function App() {
     achievements: '3x State Qualifier Appearances · 12 All-Conference Runners coached'
   });
 
-  const monthNames = ["July", "August", "September", "October", "November"];
-  const calendarMonths = [6, 7, 8, 9, 10]; // July (6) to Nov (10)
-
+  // Inject Team Colors (Red, Blue, & White)
   useEffect(() => {
     document.documentElement.style.setProperty('--bg', '#f1f5f9');
     document.documentElement.style.setProperty('--bg2', '#ffffff');
@@ -93,10 +105,17 @@ export default function App() {
     document.documentElement.style.setProperty('--text', '#0f172a');
     document.documentElement.style.setProperty('--text2', '#334155');
     document.documentElement.style.setProperty('--text3', '#64748b');
-    document.documentElement.style.setProperty('--accent', '#0f2b5c'); 
-    document.documentElement.style.setProperty('--accent2', '#1e40af'); 
-    document.documentElement.style.setProperty('--red', '#c2185b'); 
+    document.documentElement.style.setProperty('--accent', '#0f2b5c'); // Deep Royal Blue
+    document.documentElement.style.setProperty('--accent2', '#1e40af'); // Vibrant Blue
+    document.documentElement.style.setProperty('--red', '#c2185b'); // Crimson Red
     document.documentElement.style.setProperty('--blue', '#0f2b5c');
+
+    // Favicon Setup
+    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+    link.type = 'image/svg+xml';
+    link.rel = 'shortcut icon';
+    link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23c2185b"><circle cx="50" cy="50" r="40" fill="%230f2b5c"/><path d="M35 65 L45 35 L55 55 L65 35" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+    document.getElementsByTagName('head')[0].appendChild(link);
   }, []);
 
   useEffect(() => {
@@ -230,8 +249,9 @@ export default function App() {
     fetchAllData();
   };
 
-  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const currentMonthObj = SEASON_MONTHS.find(m => m.id === activeMonth) || SEASON_MONTHS[1];
+  const weeksInMonth = currentMonthObj.weeks;
+  const currentMonthIdx = SEASON_MONTHS.findIndex(m => m.id === activeMonth) + 6; // Offset July starts at index 6
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -252,15 +272,20 @@ export default function App() {
         </div>
       )}
 
-      {/* NAVBAR */}
+      {/* NAVBAR WITH RUNNING R LOGO */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3px solid var(--red)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '58px', justifyContent: 'space-between' }}>
           
           <div onClick={() => setCurrentPage('home')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            {/* Custom SVG Running R Logo */}
             <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}>
               <circle cx="50" cy="50" r="45" fill="#ffffff" />
-              <path d="M25 65 L45 35 L55 55 L75 25" stroke="var(--accent)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M45 65 L55 45 L65 55 L85 25" stroke="var(--red)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M35 25 V75" stroke="var(--accent)" strokeWidth="10" strokeLinecap="round" />
+              <path d="M35 25 H55 C68 25, 68 50, 55 50 H35" stroke="var(--accent)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M50 50 L68 75" stroke="var(--red)" strokeWidth="10" strokeLinecap="round" />
+              <path d="M22 35 H28" stroke="var(--red)" strokeWidth="4" strokeLinecap="round" />
+              <path d="M22 45 H28" stroke="var(--accent)" strokeWidth="4" strokeLinecap="round" />
+              <path d="M22 55 H28" stroke="var(--red)" strokeWidth="4" strokeLinecap="round" />
             </svg>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: supabaseConnected ? '#4ade80' : '#f87171', border: '1px solid #ffffff' }} />
           </div>
@@ -316,7 +341,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TRACKER VIEW - REDESIGNED AS EDITABLE CALENDAR */}
+        {/* TRACKER VIEW */}
         {currentPage === 'tracker' && (
           <div>
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
@@ -324,23 +349,42 @@ export default function App() {
               <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan and log your training cycle inside an interactive calendar grid. Click any calendar day to log metrics or edit the prescription.</p>
             </div>
 
-            {/* MONTH FILTER BUTTONS */}
+            {/* MONTH FILTER */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginBottom: '1.5rem' }}>
-              {calendarMonths.map((mIdx) => (
+              {SEASON_MONTHS.map((m) => (
                 <button
-                  key={mIdx}
+                  key={m.id}
                   onClick={() => {
-                    setCurrentMonth(mIdx);
+                    setActiveMonth(m.id);
+                    setActiveWeek(m.weeks[0]);
                     setSelectedDayInfo(null);
                   }}
                   style={{
                     padding: '12px', borderRadius: '8px', border: '1px solid var(--border)',
-                    background: currentMonth === mIdx ? 'var(--accent)' : 'var(--bg2)',
-                    color: currentMonth === mIdx ? '#ffffff' : 'var(--text2)',
+                    background: activeMonth === m.id ? 'var(--accent)' : 'var(--bg2)',
+                    color: activeMonth === m.id ? '#ffffff' : 'var(--text2)',
                     fontWeight: 600, fontFamily: 'var(--font-display)', fontSize: '15px', cursor: 'pointer'
                   }}
                 >
-                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][mIdx]}
+                  {m.name}
+                </button>
+              ))}
+            </div>
+
+            {/* WEEK SELECTOR */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.5rem', borderBottom: '1px dashed var(--border)', paddingBottom: '12px' }}>
+              {weeksInMonth.map((wk) => (
+                <button
+                  key={wk}
+                  onClick={() => setActiveWeek(wk)}
+                  style={{
+                    padding: '6px 14px', borderRadius: '20px', border: '1px solid var(--border)',
+                    background: activeWeek === wk ? 'var(--red)' : 'transparent',
+                    color: activeWeek === wk ? '#ffffff' : 'var(--text3)',
+                    cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600
+                  }}
+                >
+                  Week {wk}
                 </button>
               ))}
             </div>
@@ -351,15 +395,13 @@ export default function App() {
                 <div key={d} style={{ background: '#f8fafc', padding: '10px', textAlign: 'center', fontWeight: 600, fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{d}</div>
               ))}
               
-              {/* Fill blanks */}
               {Array.from({ length: firstDayIndex }).map((_, i) => (
                 <div key={`tracker-empty-${i}`} style={{ background: 'var(--bg2)', minHeight: '95px', opacity: 0.5 }} />
               ))}
 
-              {/* Day cells */}
               {Array.from({ length: daysInMonth }).map((_, idx) => {
                 const dayNum = idx + 1;
-                const dateInfo = getPlanDayFromDate(currentYear, currentMonth, dayNum);
+                const dateInfo = getPlanDayFromDate(currentYear, currentMonthIdx, dayNum);
                 
                 let dayPlan = null;
                 let log = {};
@@ -385,7 +427,7 @@ export default function App() {
                           day: dateInfo.day,
                           key: dateInfo.key,
                           plan: dayPlan,
-                          dateStr: `${monthNames[currentMonth - 6]} ${dayNum}, ${currentYear}`
+                          dateStr: `${currentMonthObj.name} ${dayNum}, ${currentYear}`
                         });
                       }
                     }}
@@ -416,7 +458,7 @@ export default function App() {
               })}
             </div>
 
-            {/* EDITABLE SELECTION DRAWER */}
+            {/* SELECTED DAY FORM */}
             {selectedDayInfo && (
               <div style={{ marginTop: '1.5rem', borderTop: '2px solid var(--accent)', paddingTop: '1.5rem' }}>
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1rem' }}>
@@ -430,6 +472,7 @@ export default function App() {
                   onSave={handleSaveLog}
                   onClear={handleClearLog}
                   onSavePlanOverride={handleSavePlanOverride}
+                  showToast={showToast}
                 />
               </div>
             )}
@@ -438,19 +481,19 @@ export default function App() {
 
         {currentPage === 'strategies' && (
           <StrategiesView 
-            strategies={strategies} xcResults={xcResults} athletes={athletes} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
+            strategies={strategies} xcResults={xcResults} athletes={athletes} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} showToast={showToast}
           />
         )}
 
         {currentPage === 'races' && (
           <RacesView 
-            races={races} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
+            races={races} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} showToast={showToast}
           />
         )}
 
         {currentPage === 'athletes' && (
           <AthletesView 
-            athletes={athletes} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} 
+            athletes={athletes} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} showToast={showToast}
           />
         )}
 
@@ -460,11 +503,12 @@ export default function App() {
 
         {currentPage === 'about' && (
           <AboutView 
-            profile={aboutProfile} supabaseConnected={supabaseConnected} 
+            profile={aboutProfile} supabaseConnected={supabaseConnected} showToast={showToast}
             onSaveProfile={(data) => {
               setAboutProfile(data);
               if (supabaseConnected) {
                 supabase.from('run_settings').upsert({ id: 'about', data });
+                showToast("Profile credentials updated!", "success");
               }
             }} 
           />
