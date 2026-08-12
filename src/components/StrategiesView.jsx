@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, FileText, TrendingUp } from 'lucide-react';
+import { Trash2, FileText, TrendingUp, Upload } from 'lucide-react';
 
 export default function StrategiesView({ strategies, xcResults, athletes, supabaseConnected, onRefresh, showToast }) {
   const [title, setTitle] = useState('');
@@ -38,13 +38,12 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     }
   };
 
-  // Browser-based file reader supporting CSV, Plain Text, and DOCX document selections
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.name.endsWith('.docx')) {
-      showToast("DOCX is compressed. Copy-paste contents or save as .txt / .csv", "warning");
+    if (file.name.endsWith('.docx') || file.name.endsWith('.pdf')) {
+      showToast("Binary file loaded! For optimal results, please copy-paste your text directly below.", "warning");
       return;
     }
 
@@ -56,7 +55,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     reader.readAsText(file);
   };
 
-  // Upgraded: Headerless Regular Expression Parser
+  // Upgraded: Smart Regex Headerless Parser
   const handleBulkImport = async () => {
     if (!rawPasteText.trim() || !supabaseConnected) return;
 
@@ -265,10 +264,10 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>Excel, Docs, or CSV Clipboard Importer</h3>
           <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem', lineHeight: 1.5 }}>
-            Upload a spreadsheet file (`.csv`, `.txt`, `.docx`) or paste rows directly. No headers required!
+            Upload a spreadsheet file (`.csv`, `.txt`, `.docx`, `.pdf`) or paste rows directly. No headers required!
           </p>
           <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <input type="file" accept=".csv,.txt,.docx" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
+            <input type="file" accept=".csv,.txt,.docx,.pdf" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
           </div>
           <textarea value={rawPasteText} onChange={e => setRawPasteText(e.target.value)} placeholder="Or paste manually here..." style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border2)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
