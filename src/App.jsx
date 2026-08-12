@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { Calendar, Award, RefreshCw, Flame, Users, Activity } from 'lucide-react';
+import { Calendar, Award, RefreshCw, Flame, Users, Activity, Trophy } from 'lucide-react';
 
 // Import our modular view components
 import DayItem from './components/DayItem';
@@ -10,13 +10,14 @@ import AthletesView from './components/AthletesView';
 import AboutView from './components/AboutView';
 import CoachingCalculator from './components/CoachingCalculator';
 
-// --- Bulletproof Custom Inline Calendar Icon ---
-const CalendarIcon = ({ size = 18, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 2v4" />
-    <path d="M16 2v4" />
-    <rect width="18" height="18" x="3" y="4" rx="2" />
-    <path d="M3 10h18" />
+// --- Roncalli Interlocking R Vector Logo ---
+export const RoncalliLogo = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}>
+    <circle cx="50" cy="50" r="45" fill="#ffffff" />
+    <path d="M38 25 V75" stroke="#005bb7" strokeWidth="12" strokeLinecap="round" />
+    <path d="M38 25 H58 C70 25, 70 48, 58 48 H38" stroke="#005bb7" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M43 38 H50 M44 32 V55" stroke="#005bb7" strokeWidth="5" strokeLinecap="round" />
+    <path d="M52 48 L70 75" stroke="#c61030" strokeWidth="12" strokeLinecap="round" />
   </svg>
 );
 
@@ -59,7 +60,7 @@ const SEASON_MONTHS = [
 
 const getPlanDayFromDate = (year, month, dayNum) => {
   const date = new Date(Date.UTC(year, month, dayNum));
-  const start = new Date(Date.UTC(2026, 6, 20)); // July 20, 2026
+  const start = new Date(Date.UTC(2026, 6, 20)); 
   const diffTime = date.getTime() - start.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
@@ -109,8 +110,8 @@ export default function App() {
     document.documentElement.style.setProperty('--text2', '#334155');
     document.documentElement.style.setProperty('--text3', '#64748b');
     document.documentElement.style.setProperty('--accent', '#005bb7'); // Roncalli Royal Blue
-    document.documentElement.style.setProperty('--accent2', '#1e40af'); // Vibrant Blue
-    document.documentElement.style.setProperty('--red', '#c2185b'); // Crimson Red
+    document.documentElement.style.setProperty('--accent2', '#1e40af'); 
+    document.documentElement.style.setProperty('--red', '#c61030'); // Roncalli Red
     document.documentElement.style.setProperty('--blue', '#005bb7');
 
     // Favicon Setup
@@ -119,6 +120,31 @@ export default function App() {
     link.rel = 'shortcut icon';
     link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23c2185b"><circle cx="50" cy="50" r="40" fill="%230f2b5c"/><path d="M35 65 L45 35 L55 55 L65 35" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
     document.getElementsByTagName('head')[0].appendChild(link);
+
+    // Inject high-yield CSS hover classes
+    const style = document.createElement('style');
+    style.textContent = `
+      .btn-interactive {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .btn-interactive:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.05);
+        box-shadow: 0 10px 15px -3px rgba(15,43,92,0.15);
+      }
+      .btn-interactive:active {
+        transform: translateY(0);
+      }
+      .card-interactive {
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px -1px rgba(15,43,92,0.04);
+      }
+      .card-interactive:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 20px -3px rgba(15,43,92,0.12);
+      }
+    `;
+    document.head.appendChild(style);
   }, []);
 
   useEffect(() => {
@@ -266,6 +292,11 @@ export default function App() {
 
   const [selectedDayInfo, setSelectedDayInfo] = useState(null);
 
+  // Calculate Cumulative Logged Team Miles for the Progress Bar
+  const totalTeamMiles = Object.values(logs).reduce((sum, item) => sum + (parseFloat(item.miles) || 0), 0);
+  const mileageGoal = 500; // Customizable goal threshold
+  const goalProgressPercentage = Math.min(100, Math.round((totalTeamMiles / mileageGoal) * 100));
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
@@ -286,16 +317,11 @@ export default function App() {
       )}
 
       {/* NAVBAR */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3px solid var(--red)' }}>
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '4px solid var(--red)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '58px', justifyContent: 'space-between' }}>
           
           <div onClick={() => handlePageSelect('home')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}>
-              <circle cx="50" cy="50" r="45" fill="#ffffff" />
-              <path d="M38 25 V75" stroke="var(--accent)" strokeWidth="12" strokeLinecap="round" />
-              <path d="M35 25 H58 C70 25, 70 48, 58 48 H38" stroke="var(--accent)" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M52 48 L70 75" stroke="var(--red)" strokeWidth="12" strokeLinecap="round" />
-            </svg>
+            <RoncalliLogo size={32} />
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: supabaseConnected ? '#4ade80' : '#f87171', border: '1px solid #ffffff' }} />
           </div>
 
@@ -307,7 +333,7 @@ export default function App() {
                 style={{ 
                   cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, 
                   color: currentPage === tab ? '#ffffff' : 'rgba(255,255,255,0.7)', 
-                  borderBottom: currentPage === tab ? '2px solid #ffffff' : 'none',
+                  borderBottom: currentPage === tab ? '3.5px solid var(--red)' : 'none',
                   paddingBottom: '4px', textTransform: 'uppercase',
                   transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
@@ -331,18 +357,30 @@ export default function App() {
             <p style={{ color: 'var(--text2)', maxWidth: '480px', marginBottom: '2.5rem', fontSize: '15px', lineHeight: 1.6 }}>
               A collaborative team coaching ecosystem. Track personal logs, manage dynamic athlete rosters, and document race-day pacing frameworks in one central hub.
             </p>
+            
+            {/* NEW TEAM MILEAGE PROGRESS CARD */}
+            <div style={{ background: 'var(--bg2)', padding: '1.75rem', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '2.5rem', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.04)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}><Trophy size={16} color="var(--accent)" /> TEAM MILEAGE BUILD PROGRESS</h4>
+                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--red)' }}>{totalTeamMiles.toFixed(1)} / {mileageGoal} MILES ({goalProgressPercentage}%)</span>
+              </div>
+              <div style={{ background: 'var(--bg3)', borderRadius: '6px', height: '16px', overflow: 'hidden' }}>
+                <div style={{ width: `${goalProgressPercentage}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent) 0%, var(--red) 100%)', transition: 'width 0.4s ease' }} />
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-              <div onClick={() => handlePageSelect('tracker')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.06), 0 2px 4px -2px rgba(15,43,92,0.06)', transition: 'transform 0.18s ease' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform = 'none'}>
+              <div onClick={() => handlePageSelect('tracker')} className="card-interactive" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
                 <Activity style={{ color: 'var(--accent)', marginBottom: '10px' }} />
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Training Logs</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>Log running logs from the 16-week cycle.</p>
               </div>
-              <div onClick={() => handlePageSelect('strategies')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--red)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.06), 0 2px 4px -2px rgba(15,43,92,0.06)', transition: 'transform 0.18s ease' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform = 'none'}>
+              <div onClick={() => handlePageSelect('strategies')} className="card-interactive" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--red)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
                 <Award style={{ color: 'var(--red)', marginBottom: '10px' }} />
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Race Plans</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>View and configure custom strategy card notes.</p>
               </div>
-              <div onClick={() => handlePageSelect('athletes')} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.06), 0 2px 4px -2px rgba(15,43,92,0.06)', transition: 'transform 0.18s ease' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform = 'none'}>
+              <div onClick={() => handlePageSelect('athletes')} className="card-interactive" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
                 <Users style={{ color: 'var(--accent)', marginBottom: '10px' }} />
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Athletes & Roster</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>Track rosters, season stats, and upload lists.</p>
@@ -351,7 +389,6 @@ export default function App() {
           </div>
         )}
 
-        {/* TRACKER VIEW */}
         {currentPage === 'tracker' && (
           <div>
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
@@ -369,13 +406,12 @@ export default function App() {
                     setActiveWeek(m.weeks[0]);
                     setSelectedDayInfo(null);
                   }}
+                  className="btn-interactive"
                   style={{
                     padding: '12px', borderRadius: '8px', border: '1px solid var(--border)',
                     background: activeMonth === m.id ? 'var(--accent)' : 'var(--bg2)',
                     color: activeMonth === m.id ? '#ffffff' : 'var(--text2)',
                     fontWeight: 600, fontFamily: 'var(--font-display)', fontSize: '15px', cursor: 'pointer',
-                    boxShadow: activeMonth === m.id ? '0 4px 12px rgba(15,43,92,0.15)' : 'none',
-                    transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
                   {m.name}
@@ -448,8 +484,11 @@ export default function App() {
                       background: 'var(--bg2)', minHeight: '95px', padding: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
                       cursor: dateInfo ? 'pointer' : 'default',
                       border: selectedDayInfo?.key === dateInfo?.key && dateInfo ? '2.5px solid var(--accent)' : 'none',
-                      opacity: dateInfo ? 1 : 0.4
+                      opacity: dateInfo ? 1 : 0.4,
+                      transition: 'transform 0.12s ease'
                     }}
+                    onMouseOver={e => { if (dateInfo) e.currentTarget.style.transform = 'scale(1.02)'; }}
+                    onMouseOut={e => { e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>{dayNum}</span>
