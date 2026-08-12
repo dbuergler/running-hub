@@ -35,8 +35,8 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.name.endsWith('.docx')) {
-      showToast("DOCX is compressed. Copy-paste contents or save as .txt / .csv", "warning");
+    if (file.name.endsWith('.docx') || file.name.endsWith('.pdf')) {
+      showToast("Binary file loaded! For optimal results, copy-paste your text directly below.", "warning");
       return;
     }
 
@@ -57,7 +57,6 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
       const dataToInsert = [];
 
       lines.forEach((line, index) => {
-        // Splitting columns by comma, tab, or vertical line (|)
         const cols = line.split(/[,\t|]/).map(c => c.trim());
         if (cols.length === 0 || cols[0].toLowerCase().includes('name')) return; // skip header columns if present
 
@@ -133,10 +132,11 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}><Database size={16} /> Bulk Spreadsheets Importer</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any spreadsheet file (`.csv`, `.txt`, `.docx`) or paste rows directly. No headers required—our smart parser automatically detects data!</p>
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any spreadsheet file (`.csv`, `.txt`, `.docx`, `.pdf`) or paste rows directly. No headers required—our smart parser automatically detects data!</p>
           
           <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <input type="file" accept=".csv,.txt,.docx" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
+            <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>Upload Spreadsheet File (.csv, .txt, .docx, .pdf):</label>
+            <input type="file" accept=".csv,.txt,.docx,.pdf" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
           </div>
 
           <textarea value={csvText} onChange={e => setCsvText(e.target.value)} placeholder="Or paste manually here..." style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
