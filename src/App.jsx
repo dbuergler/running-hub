@@ -10,14 +10,20 @@ import AthletesView from './components/AthletesView';
 import AboutView from './components/AboutView';
 import CoachingCalculator from './components/CoachingCalculator';
 
-// --- Roncalli Interlocking R Vector Logo ---
-export const RoncalliLogo = ({ size = 28 }) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}>
-    <circle cx="50" cy="50" r="45" fill="#ffffff" />
-    <path d="M38 25 V75" stroke="#005bb7" strokeWidth="12" strokeLinecap="round" />
-    <path d="M38 25 H58 C70 25, 70 48, 58 48 H38" stroke="#005bb7" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M43 38 H50 M44 32 V55" stroke="#005bb7" strokeWidth="5" strokeLinecap="round" />
-    <path d="M52 48 L70 75" stroke="#c61030" strokeWidth="12" strokeLinecap="round" />
+// --- Accurate Roncalli "R" Vector Logo ---
+export const RoncalliLogo = ({ size = 32 }) => (
+  <svg width={size} height={size * 1.1} viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>
+    {/* White Outer Border Shield */}
+    <path d="M20 10 H60 C78 10 88 22 88 40 C88 55 78 65 62 67 L82 102 H64 L46 68 H36 V102 H20 V10 Z" fill="#ffffff" stroke="#c61030" strokeWidth="4" />
+    {/* Inner Red Block R Body */}
+    <path d="M25 15 H56 C70 15 80 25 80 40 C80 52 70 62 56 62 H31 V96 H25 V15 Z" fill="#c61030" />
+    {/* Inner White Cutout of Loop */}
+    <path d="M38 27 H54 C62 27 68 32 68 40 C68 48 62 52 54 52 H38 V27 Z" fill="#ffffff" />
+    {/* Inner Blue Sword Accent in Left Stem */}
+    <path d="M28 20 H34 V90 H28 Z" fill="#003366" />
+    <path d="M22 35 H40 V42 H22 Z" fill="#003366" />
+    {/* Slanted Right Red Leg */}
+    <path d="M50 62 L74 96 H60 L38 62 H50 Z" fill="#c61030" stroke="#ffffff" strokeWidth="2" />
   </svg>
 );
 
@@ -60,7 +66,7 @@ const SEASON_MONTHS = [
 
 const getPlanDayFromDate = (year, month, dayNum) => {
   const date = new Date(Date.UTC(year, month, dayNum));
-  const start = new Date(Date.UTC(2026, 6, 20)); 
+  const start = new Date(Date.UTC(2026, 6, 20)); // July 20, 2026
   const diffTime = date.getTime() - start.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
@@ -114,35 +120,20 @@ export default function App() {
     document.documentElement.style.setProperty('--red', '#c61030'); // Roncalli Red
     document.documentElement.style.setProperty('--blue', '#005bb7');
 
-    // Favicon Setup
+    // Dynamic Roncalli R browser favicon
     const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
     link.type = 'image/svg+xml';
     link.rel = 'shortcut icon';
-    link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23c2185b"><circle cx="50" cy="50" r="40" fill="%230f2b5c"/><path d="M35 65 L45 35 L55 55 L65 35" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+    link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110" fill="none"><path d="M20 10 H60 C78 10 88 22 88 40 C88 55 78 65 62 67 L82 102 H64 L46 68 H36 V102 H20 V10 Z" fill="%23ffffff" stroke="%23c61030" stroke-width="4"/><path d="M25 15 H56 C70 15 80 25 80 40 C80 52 70 62 56 62 H31 V96 H25 V15 Z" fill="%23c61030"/><path d="M38 27 H54 C62 27 68 32 68 40 C68 48 62 52 54 52 H38 V27 Z" fill="%23ffffff"/><path d="M28 20 H34 V90 H28 Z" fill="%23003366"/><path d="M22 35 H40 V42 H22 Z" fill="%23003366"/><path d="M50 62 L74 96 H60 L38 62 H50 Z" fill="%23c61030" stroke="%23ffffff" stroke-width="2"/></svg>';
     document.getElementsByTagName('head')[0].appendChild(link);
 
-    // Inject high-yield CSS hover classes
     const style = document.createElement('style');
     style.textContent = `
-      .btn-interactive {
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .btn-interactive:hover {
-        transform: translateY(-2px);
-        filter: brightness(1.05);
-        box-shadow: 0 10px 15px -3px rgba(15,43,92,0.15);
-      }
-      .btn-interactive:active {
-        transform: translateY(0);
-      }
-      .card-interactive {
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 6px -1px rgba(15,43,92,0.04);
-      }
-      .card-interactive:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 20px -3px rgba(15,43,92,0.12);
-      }
+      .btn-interactive { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+      .btn-interactive:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 10px 15px -3px rgba(15,43,92,0.15); }
+      .btn-interactive:active { transform: translateY(0); }
+      .card-interactive { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 6px -1px rgba(15,43,92,0.04); }
+      .card-interactive:hover { transform: translateY(-3px); box-shadow: 0 12px 20px -3px rgba(15,43,92,0.12); }
     `;
     document.head.appendChild(style);
   }, []);
@@ -268,7 +259,7 @@ export default function App() {
     if (supabaseConnected) {
       await supabase.from('run_plan_overrides').upsert({
         id: dayKey,
-        w: overrideData.w,
+        w: activeWeek,
         d: overrideData.d,
         type: overrideData.type,
         desc: overrideData.desc,
@@ -292,10 +283,10 @@ export default function App() {
 
   const [selectedDayInfo, setSelectedDayInfo] = useState(null);
 
-  // Calculate Cumulative Logged Team Miles for the Progress Bar
-  const totalTeamMiles = Object.values(logs).reduce((sum, item) => sum + (parseFloat(item.miles) || 0), 0);
-  const mileageGoal = 500; // Customizable goal threshold
-  const goalProgressPercentage = Math.min(100, Math.round((totalTeamMiles / mileageGoal) * 100));
+  // Calculate Personal Logged Miles for the Tracker Progress Bar
+  const personalLoggedMiles = Object.values(logs).reduce((sum, item) => sum + (parseFloat(item.miles) || 0), 0);
+  const personalGoal = 100; // Customizable monthly personal goal
+  const personalProgressPercentage = Math.min(100, Math.round((personalLoggedMiles / personalGoal) * 100));
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -326,7 +317,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
-            {['tracker', 'strategies', 'races', 'athletes', 'paces', 'about'].map((tab) => (
+            {['tracker', 'strategies', 'races', 'team', 'paces', 'about'].map((tab) => (
               <span 
                 key={tab}
                 onClick={() => handlePageSelect(tab)} 
@@ -357,18 +348,6 @@ export default function App() {
             <p style={{ color: 'var(--text2)', maxWidth: '480px', marginBottom: '2.5rem', fontSize: '15px', lineHeight: 1.6 }}>
               A collaborative team coaching ecosystem. Track personal logs, manage dynamic athlete rosters, and document race-day pacing frameworks in one central hub.
             </p>
-            
-            {/* NEW TEAM MILEAGE PROGRESS CARD */}
-            <div style={{ background: 'var(--bg2)', padding: '1.75rem', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '2.5rem', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.04)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}><Trophy size={16} color="var(--accent)" /> TEAM MILEAGE BUILD PROGRESS</h4>
-                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--red)' }}>{totalTeamMiles.toFixed(1)} / {mileageGoal} MILES ({goalProgressPercentage}%)</span>
-              </div>
-              <div style={{ background: 'var(--bg3)', borderRadius: '6px', height: '16px', overflow: 'hidden' }}>
-                <div style={{ width: `${goalProgressPercentage}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent) 0%, var(--red) 100%)', transition: 'width 0.4s ease' }} />
-              </div>
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
               <div onClick={() => handlePageSelect('tracker')} className="card-interactive" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
                 <Activity style={{ color: 'var(--accent)', marginBottom: '10px' }} />
@@ -380,20 +359,32 @@ export default function App() {
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Race Plans</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>View and configure custom strategy card notes.</p>
               </div>
-              <div onClick={() => handlePageSelect('athletes')} className="card-interactive" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
+              <div onClick={() => handlePageSelect('team')} className="card-interactive" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderTop: '4px solid var(--accent)', borderRadius: '10px', padding: '1.5rem', cursor: 'pointer' }}>
                 <Users style={{ color: 'var(--accent)', marginBottom: '10px' }} />
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Athletes & Roster</h3>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>Team & Roster</h3>
                 <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>Track rosters, season stats, and upload lists.</p>
               </div>
             </div>
           </div>
         )}
 
+        {/* TRACKER VIEW */}
         {currentPage === 'tracker' && (
           <div>
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TRAINING LOG CALENDAR</h2>
               <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan and log your training cycle inside an interactive calendar grid. Click any calendar day to log metrics or edit the prescription.</p>
+            </div>
+
+            {/* PERSONAL MILEAGE GOAL PROGRESS BAR */}
+            <div style={{ background: 'var(--bg2)', padding: '1.25rem 1.5rem', borderRadius: '10px', border: '1px solid var(--border)', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.04)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}><Trophy size={16} color="var(--red)" /> MY PERSONAL LOGGED MILEAGE</h4>
+                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--red)' }}>{personalLoggedMiles.toFixed(1)} / {personalGoal} MILES ({personalProgressPercentage}%)</span>
+              </div>
+              <div style={{ background: 'var(--bg3)', borderRadius: '6px', height: '12px', overflow: 'hidden' }}>
+                <div style={{ width: `${personalProgressPercentage}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent) 0%, var(--red) 100%)', transition: 'width 0.4s ease' }} />
+              </div>
             </div>
 
             {/* MONTH FILTER */}
@@ -411,7 +402,7 @@ export default function App() {
                     padding: '12px', borderRadius: '8px', border: '1px solid var(--border)',
                     background: activeMonth === m.id ? 'var(--accent)' : 'var(--bg2)',
                     color: activeMonth === m.id ? '#ffffff' : 'var(--text2)',
-                    fontWeight: 600, fontFamily: 'var(--font-display)', fontSize: '15px', cursor: 'pointer',
+                    fontWeight: 600, fontFamily: 'var(--font-display)', fontSize: '15px', cursor: 'pointer'
                   }}
                 >
                   {m.name}
@@ -543,7 +534,7 @@ export default function App() {
           />
         )}
 
-        {currentPage === 'athletes' && (
+        {currentPage === 'team' && (
           <AthletesView 
             athletes={athletes} supabaseConnected={supabaseConnected} onRefresh={fetchAllData} showToast={showToast}
           />
@@ -555,7 +546,7 @@ export default function App() {
 
         {currentPage === 'about' && (
           <AboutView 
-            profile={aboutProfile} supabaseConnected={supabaseConnected} showToast={showToast}
+            profile={aboutProfile} athletes={athletes} supabaseConnected={supabaseConnected} showToast={showToast}
             onSaveProfile={(data) => {
               setAboutProfile(data);
               if (supabaseConnected) {
