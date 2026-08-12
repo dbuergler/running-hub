@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { Calendar, Award, RefreshCw, Flame, Users, Activity } from 'lucide-react';
+import { Award, RefreshCw, Flame, Users, Activity } from 'lucide-react';
 
 // Import our modular view components
 import DayItem from './components/DayItem';
@@ -14,7 +14,7 @@ import CoachingCalculator from './components/CoachingCalculator';
 const getWorkoutForDay = (w, d) => {
   if (d === 6) return { type: 'rest', desc: 'Rest Day' };
   if (d === 7) {
-    const miles = 8 + Math.min(w, 8);
+    const miles = 8 + Math.min(w, 8); // Long run builds from 9 to 16 miles
     return { type: 'long', desc: `Long Slow Distance — ${miles} miles`, workout: `Settle into comfortable Z2 aerobic pace. Practice race-day hydration every 3 miles.` };
   }
   if (d === 3) {
@@ -40,10 +40,22 @@ const getDayPlan = (w, d) => {
   return { w, d, ...base };
 };
 
+// --- Exact calendar months mapped to your 16-week cycle ending on Nov 7th ---
+const SEASON_MONTHS = [
+  { id: 'july', name: 'July', weeks: [1, 2] },
+  { id: 'august', name: 'August', weeks: [3, 4, 5, 6] },
+  { id: 'september', name: 'September', weeks: [7, 8, 9, 10] },
+  { id: 'october', name: 'October', weeks: [11, 12, 13, 14] },
+  { id: 'november', name: 'November', weeks: [15, 16] }
+];
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
-  const [activeMonth, setActiveMonth] = useState(1);
-  const [activeWeek, setActiveWeek] = useState(1);
+  
+  // Set default load filters automatically to August / Week 4 based on August 11, 2026 date
+  const [activeMonth, setActiveMonth] = useState('august');
+  const [activeWeek, setActiveWeek] = useState(4);
+  
   const [logs, setLogs] = useState({});
   const [planOverrides, setPlanOverrides] = useState({});
   const [supabaseConnected, setSupabaseConnected] = useState(false);
@@ -210,8 +222,9 @@ export default function App() {
     }
   };
 
-  const startWeek = (activeMonth - 1) * 4 + 1;
-  const weeksInMonth = [startWeek, startWeek + 1, startWeek + 2, startWeek + 3];
+  // Find the selected month block structure to safely map its week sub-pills
+  const currentMonthObj = SEASON_MONTHS.find(m => m.id === activeMonth) || SEASON_MONTHS[1];
+  const weeksInMonth = currentMonthObj.weeks;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -232,7 +245,7 @@ export default function App() {
         </div>
       )}
 
-      {/* NAVBAR WITH "RUN/" TEXT REMOVED */}
+      {/* NAVBAR */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3px solid var(--red)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '58px', justifyContent: 'space-between' }}>
           
@@ -264,7 +277,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* CONTENT WITH INCREASED SPACIOUS PADDING */}
+      {/* CONTENT */}
       <main style={{ flex: 1, paddingTop: '80px', maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '80px 2rem 4rem' }}>
         
         {/* HOME VIEW */}
@@ -296,30 +309,36 @@ export default function App() {
           </div>
         )}
 
+        {/* TRACKER VIEW */}
         {currentPage === 'tracker' && (
           <div>
             <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TRAINING TRACKER</h2>
-              <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Log workout metrics, times, efforts, and details for the selected training cycle.</p>
+              <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Log workout metrics, times, efforts, and details. Click any card to customize or edit the plan.</p>
             </div>
 
-            {/* MONTH FILTER */}
+            {/* MONTH FILTER REPLACED WITH DYNAMIC SEASON MONTH BLUEPRINTS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginBottom: '1.5rem' }}>
-              {[1, 2, 3, 4].map((m) => (
+              {SEASON_MONTHS.map((m) => (
                 <button
-                  key={m}
+                  key={m.id}
                   onClick={() => {
-                    setActiveMonth(m);
-                    setActiveWeek((m - 1) * 4 + 1);
+                    setActiveMonth(m.id);
+                    setActiveWeek(m.weeks[0]); // Automatically select the first week of that month block
                   }}
                   style={{
-                    padding: '12px', borderRadius: '8px', border: '1px solid var(--border)',
-                    background: activeMonth === m ? 'var(--accent)' : 'var(--bg2)',
-                    color: activeMonth === m ? '#ffffff' : 'var(--text2)',
-                    fontWeight: 600, fontFamily: 'var(--font-display)', fontSize: '15px', cursor: 'pointer'
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: activeMonth === m.id ? 'var(--accent)' : 'var(--bg2)',
+                    color: activeMonth === m.id ? '#ffffff' : 'var(--text2)',
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '15px',
+                    cursor: 'pointer'
                   }}
                 >
-                  Month {m} <span style={{ fontSize: '11px', display: 'block', fontWeight: 400, opacity: 0.8 }}>Wks {(m-1)*4 + 1}–{m*4}</span>
+                  {m.name} <span style={{ fontSize: '11px', display: 'block', fontWeight: 400, opacity: 0.8 }}>Wks {m.weeks[0]}–{m.weeks[m.weeks.length - 1]}</span>
                 </button>
               ))}
             </div>
