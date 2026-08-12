@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Trash2, FileText, TrendingUp } from 'lucide-react';
 
-export default function StrategiesView({ strategies, xcResults, athletes, supabaseConnected, onRefresh }) {
+export default function StrategiesView({ strategies, xcResults, athletes, supabaseConnected, onRefresh, showToast }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
@@ -30,7 +30,10 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
       });
       if (!error) {
         setTitle(''); setContent(''); setTags('');
+        showToast("Race plan saved successfully!", "success");
         onRefresh();
+      } else {
+        showToast("Error saving plan: " + error.message, "warning");
       }
     }
   };
@@ -39,17 +42,21 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     const file = e.target.files[0];
     if (!file) return;
 
+    if (file.name.endsWith('.docx')) {
+      showToast("DOCX is compressed. For best results, copy-paste or save as .txt / .csv", "warning");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       setRawPasteText(evt.target.result);
-      setImportStatus(`File "${file.name}" loaded successfully. Click Compile below.`);
+      showToast(`File "${file.name}" parsed! Review below and click Import.`, "success");
     };
     reader.readAsText(file);
   };
 
   const handleBulkImport = async () => {
     if (!rawPasteText.trim() || !supabaseConnected) return;
-    setImportStatus('Processing data into the database...');
 
     try {
       const lines = rawPasteText.split('\n').filter(line => line.trim() !== '');
@@ -71,22 +78,22 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
       const { error } = await supabase.from('run_resources').insert(listToInsert);
       if (error) throw error;
 
-      setImportStatus(`Success: Imported ${listToInsert.length} race plans.`);
+      showToast(`Successfully imported ${listToInsert.length} race plans!`, "success");
       setRawPasteText('');
       onRefresh();
     } catch (err) {
-      setImportStatus(`Failed: ${err.message}`);
+      showToast("Error importing data: " + err.message, "warning");
     }
   };
 
   const handleDelete = async (id) => {
     if (supabaseConnected) {
       await supabase.from('run_resources').delete().eq('id', id);
+      showToast("Race plan removed.", "warning");
       onRefresh();
     }
   };
 
-  // Add a Meet Result to run_xc
   const handleAddXCResult = async (e) => {
     e.preventDefault();
     if (!selectedAthlete || !meetName || !meetTime || !meetDate) return;
@@ -102,9 +109,10 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
       });
       if (!error) {
         setMeetName(''); setMeetTime('');
+        showToast("Meet result logged!", "success");
         onRefresh();
       } else {
-        alert("Error saving result: " + error.message);
+        showToast("Error saving meet result: " + error.message, "warning");
       }
     }
   };
@@ -115,15 +123,13 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     return parts[0] * 60 + parts[1];
   };
 
-  // Filter and sort the selected runner's times for the progression graph
   const runnerResults = xcResults
     .filter(r => r.athlete === selectedAthlete)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  // Determine scaling metrics for the Custom SVG Line graph
   const timesInSeconds = runnerResults.map(r => timeToSeconds(r.time)).filter(s => s > 0);
-  const minSec = timesInSeconds.length ? Math.min(...timesInSeconds) : 900; // default 15 mins
-  const maxSec = timesInSeconds.length ? Math.max(...timesInSeconds) : 1200; // default 20 mins
+  const minSec = timesInSeconds.length ? Math.min(...timesInSeconds) : 900;
+  const maxSec = timesInSeconds.length ? Math.max(...timesInSeconds) : 1200;
   const paddingOffset = (maxSec - minSec) * 0.1 || 30;
 
   const graphMin = Math.max(0, minSec - paddingOffset);
@@ -132,7 +138,6 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
   const plotPoints = runnerResults.map((r, i) => {
     const x = 50 + (i * (450 / Math.max(1, runnerResults.length - 1)));
     const ySec = timeToSeconds(r.time);
-    // Lower times (faster) mapped higher on the grid (lower y coordinate in SVG space)
     const y = 20 + ((graphMax - ySec) / (graphMax - graphMin)) * 160;
     return { x, y, ...r };
   });
@@ -167,7 +172,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
       )}
 
-      {/* STRATEGIES GRID */}
+      {/* STRATEGIES */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         <div>
           <form onSubmit={handleAddStrategy} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -180,7 +185,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {currentDisplayList.slice(0, 4).map((s) => (
+          {strategies.slice(0, 4).map((s) => (
             <div key={s.id || s.title} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{s.title}</h4>
@@ -192,7 +197,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
       </div>
 
-      {/* --- SEASON PROGRESSION PLOT GRAPH (SVG BASED) --- */}
+      {/* --- SEASON PROGRESSION PLOT GRAPH --- */}
       <div style={{ borderTop: '2px solid var(--border)', paddingTop: '2.5rem' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700, color: 'var(--accent)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <TrendingUp size={22} /> ATHLETE SEASON PROGRESSION
@@ -236,13 +241,11 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
             {plotPoints.length >= 2 ? (
               <div style={{ position: 'relative', width: '100%', flex: 1 }}>
                 <svg viewBox="0 0 520 220" style={{ width: '100%', height: '100%' }}>
-                  {/* Grid Lines */}
                   <line x1="50" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeWidth="1" />
                   <line x1="50" y1="100" x2="500" y2="100" stroke="#f1f5f9" strokeWidth="1" />
                   <line x1="50" y1="180" x2="500" y2="180" stroke="#f1f5f9" strokeWidth="1" />
                   <line x1="50" y1="180" x2="500" y2="180" stroke="var(--text3)" strokeWidth="2" />
 
-                  {/* SVG Progression Line */}
                   <polyline
                     fill="none"
                     stroke="var(--red)"
@@ -252,7 +255,6 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
                     points={plotPoints.map(p => `${p.x},${p.y}`).join(' ')}
                   />
 
-                  {/* Circles & Tooltip Data Points */}
                   {plotPoints.map((p, index) => (
                     <g key={index}>
                       <circle cx={p.x} cy={p.y} r="6" fill="var(--accent)" stroke="#ffffff" strokeWidth="2" />
