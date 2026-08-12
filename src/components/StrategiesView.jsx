@@ -11,7 +11,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
   const [showImporter, setShowImporter] = useState(false);
 
   // States for the Athlete Progression Graph
-  const [selectedAthlete, setSelectedAthlete] = useState('');
+  const [selectedAthlete, setSelectedAthlete] = useState('overall'); // Defaults to 'overall'
   const [meetName, setMeetName] = useState('');
   const [meetDate, setMeetDate] = useState('');
   const [meetTime, setMeetTime] = useState('');
@@ -38,12 +38,13 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     }
   };
 
+  // Browser-based file reader supporting CSV, Plain Text, and DOCX document selections
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     if (file.name.endsWith('.docx')) {
-      showToast("DOCX is compressed. For best results, copy-paste or save as .txt / .csv", "warning");
+      showToast("DOCX is compressed. Copy-paste contents or save as .txt / .csv", "warning");
       return;
     }
 
@@ -55,6 +56,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     reader.readAsText(file);
   };
 
+  // Upgraded: Headerless Regular Expression Parser
   const handleBulkImport = async () => {
     if (!rawPasteText.trim() || !supabaseConnected) return;
 
@@ -63,7 +65,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
       const listToInsert = [];
 
       lines.forEach((line) => {
-        const parts = line.split(/\t|\|/).map(p => p.trim());
+        const parts = line.split(/[,\t|]/).map(p => p.trim());
         if (parts.length >= 2) {
           listToInsert.push({
             id: Date.now() + Math.floor(Math.random() * 1000),
@@ -96,7 +98,10 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
 
   const handleAddXCResult = async (e) => {
     e.preventDefault();
-    if (!selectedAthlete || !meetName || !meetTime || !meetDate) return;
+    if (!selectedAthlete || selectedAthlete === 'overall' || !meetName || !meetTime || !meetDate) {
+      showToast("Please select a specific runner to log a meet result.", "warning");
+      return;
+    }
 
     if (supabaseConnected) {
       const { error } = await supabase.from('run_xc').insert({
@@ -109,7 +114,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
       });
       if (!error) {
         setMeetName(''); setMeetTime('');
-        showToast("Meet result logged!", "success");
+        showToast("Meet result logged successfully!", "success");
         onRefresh();
       } else {
         showToast("Error saving meet result: " + error.message, "warning");
@@ -123,24 +128,123 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     return parts[0] * 60 + parts[1];
   };
 
-  const runnerResults = xcResults
-    .filter(r => r.athlete === selectedAthlete)
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  // Equivalent scale calculation values
+  const getGraphScalingMetrics = (filteredResults) => {
+    const timesInSeconds = filteredResults.map(r => timeToSeconds(r.time)).filter(s => s > 0);
+    const minSec = timesInSeconds.length ? Math.min(...timesInSeconds) : 900;
+    const maxSec = timesInSeconds.length ? Math.max(...timesInSeconds) : 1200;
+    const paddingOffset = (maxSec - minSec) * 0.1 || 30;
 
-  const timesInSeconds = runnerResults.map(r => timeToSeconds(r.time)).filter(s => s > 0);
-  const minSec = timesInSeconds.length ? Math.min(...timesInSeconds) : 900;
-  const maxSec = timesInSeconds.length ? Math.max(...timesInSeconds) : 1200;
-  const paddingOffset = (maxSec - minSec) * 0.1 || 30;
+    return {
+      min: Math.max(0, minSec - paddingOffset),
+      max: maxSec + paddingOffset
+    };
+  };
 
-  const graphMin = Math.max(0, minSec - paddingOffset);
-  const graphMax = maxSec + paddingOffset;
+  // Plot Renderer logic supporting single-athlete lines or ALL athletes layered together
+  const renderSVGGraph = () => {
+    if (selectedAthlete === 'overall') {
+      // Group all meet results by athlete
+      const grouped = {};
+      xcResults.forEach(r => {
+        if (!grouped[r.athlete]) grouped[r.athlete] = [];
+        grouped[r.athlete].push(r);
+      });
 
-  const plotPoints = runnerResults.map((r, i) => {
-    const x = 50 + (i * (450 / Math.max(1, runnerResults.length - 1)));
-    const ySec = timeToSeconds(r.time);
-    const y = 20 + ((graphMax - ySec) / (graphMax - graphMin)) * 160;
-    return { x, y, ...r };
-  });
+      // Filter to keep only athletes with 2 or more logged performances
+      const validAthletes = Object.keys(grouped).filter(ath => grouped[ath].length >= 2);
+      if (validAthletes.length === 0) {
+        return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text3)' }}>Add at least 2 meet results for one or more athletes to plot.</div>;
+      }
+
+      const allFilteredResults = xcResults.filter(r => validAthletes.includes(r.athlete));
+      const metrics = getGraphScalingMetrics(allFilteredResults);
+
+      const colorPalette = ['#d31034', '#005bb7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+
+      return (
+        <div style={{ position: 'relative', width: '100%', flex: 1 }}>
+          <svg viewBox="0 0 520 220" style={{ width: '100%', height: '100%' }}>
+            <line x1="50" y1="20" x2="500" y2="20" stroke="#e2e8f0" strokeWidth="1" />
+            <line x1="50" y1="100" x2="500" y2="100" stroke="#e2e8f0" strokeWidth="1" />
+            <line x1="50" y1="180" x2="500" y2="180" stroke="#e2e8f0" strokeWidth="1" />
+
+            {validAthletes.map((ath, athIdx) => {
+              const runnerData = grouped[ath].sort((a, b) => new Date(a.date) - new Date(b.date));
+              const points = runnerData.map((r, i) => {
+                const x = 50 + (i * (450 / Math.max(1, runnerData.length - 1)));
+                const ySec = timeToSeconds(r.time);
+                const y = 20 + ((metrics.max - ySec) / (metrics.max - metrics.min)) * 160;
+                return { x, y, ...r };
+              });
+
+              const color = colorPalette[athIdx % colorPalette.length];
+
+              return (
+                <g key={ath}>
+                  <polyline fill="none" stroke={color} strokeWidth="3" points={points.map(p => `${p.x},${p.y}`).join(' ')} />
+                  {points.map((p, pIdx) => (
+                    <circle key={pIdx} cx={p.x} cy={p.y} r="5" fill={color} stroke="#ffffff" strokeWidth="1.5" title={`${ath}: ${p.time}`} />
+                  ))}
+                </g>
+              );
+            })}
+          </svg>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
+            {validAthletes.map((ath, idx) => (
+              <span key={ath} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '8px', height: '8px', background: colorPalette[idx % colorPalette.length], borderRadius: '50%' }} />
+                {ath}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    } else {
+      // Render Single Athlete Line
+      const runnerData = xcResults
+        .filter(r => r.athlete === selectedAthlete)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      if (runnerData.length < 2) {
+        return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text3)' }}>Log at least 2 meet results for this athlete to plot trendlines.</div>;
+      }
+
+      const metrics = getGraphScalingMetrics(runnerData);
+      const points = runnerData.map((r, i) => {
+        const x = 50 + (i * (450 / Math.max(1, runnerData.length - 1)));
+        const ySec = timeToSeconds(r.time);
+        const y = 20 + ((metrics.max - ySec) / (metrics.max - metrics.min)) * 160;
+        return { x, y, ...r };
+      });
+
+      return (
+        <div style={{ position: 'relative', width: '100%', flex: 1 }}>
+          <svg viewBox="0 0 520 220" style={{ width: '100%', height: '100%' }}>
+            <line x1="50" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeWidth="1" />
+            <line x1="50" y1="100" x2="500" y2="100" stroke="#f1f5f9" strokeWidth="1" />
+            <line x1="50" y1="180" x2="500" y2="180" stroke="#f1f5f9" strokeWidth="1" />
+
+            <polyline fill="none" stroke="var(--red)" strokeWidth="4" points={points.map(p => `${p.x},${p.y}`).join(' ')} />
+            {points.map((p, index) => (
+              <g key={index}>
+                <circle cx={p.x} cy={p.y} r="6" fill="var(--accent)" stroke="#ffffff" strokeWidth="2" />
+                <text x={p.x} y={p.y - 12} fontSize="10" fontFamily="var(--font-mono)" textAnchor="middle" fill="var(--text)" fontWeight="bold">{p.time}</text>
+                <text x={p.x} y="205" fontSize="8" fontFamily="var(--font-mono)" textAnchor="middle" fill="var(--text3)">{p.meet.substring(0, 10)}</text>
+              </g>
+            ))}
+          </svg>
+        </div>
+      );
+    }
+  };
+
+  const defaultStrategies = [
+    { title: 'XC Goal Pacing', content: 'Run even effort, not even splits. Settle the first mile, work the second mile, and run the third mile on raw strength.', tags: 'Pacing, XC' },
+    { title: 'Up-Hill Mechanics', content: 'Shorten stride, elevate arm drive, and charge for 10 paces over the crest to establish visual gaps.', tags: 'Hills, Strength' }
+  ];
+
+  const currentDisplayList = supabaseConnected ? strategies : defaultStrategies;
 
   return (
     <div>
@@ -159,8 +263,10 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
 
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>Excel, Docs, or CSV File Importer</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload a spreadsheet file (`.csv`, `.txt`, `.docx`) or paste rows directly. Columns must be: Plan Name | Plan Details | Tags</p>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>Excel, Docs, or CSV Clipboard Importer</h3>
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem', lineHeight: 1.5 }}>
+            Upload a spreadsheet file (`.csv`, `.txt`, `.docx`) or paste rows directly. No headers required!
+          </p>
           <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <input type="file" accept=".csv,.txt,.docx" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
           </div>
@@ -172,7 +278,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
       )}
 
-      {/* STRATEGIES */}
+      {/* PLANS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         <div>
           <form onSubmit={handleAddStrategy} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -185,7 +291,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {strategies.slice(0, 4).map((s) => (
+          {currentDisplayList.slice(0, 4).map((s) => (
             <div key={s.id || s.title} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{s.title}</h4>
@@ -202,7 +308,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700, color: 'var(--accent)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <TrendingUp size={22} /> ATHLETE SEASON PROGRESSION
         </h3>
-        <p style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '1.5rem' }}>Select any runner from your team roster to plot and study their 5K time performance progression over the season.</p>
+        <p style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '1.5rem' }}>Select any runner or view the entire team roster combined on the same plot grid.</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
           {/* Left Side: Add Result Form */}
@@ -211,13 +317,13 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Select Athlete</label>
               <select value={selectedAthlete} onChange={e => setSelectedAthlete(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
-                <option value="">-- Select Runner --</option>
+                <option value="overall">-- View Team Overall --</option>
                 {athletes.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Meet Name</label>
-              <input type="text" value={meetName} onChange={e => setMeetName(e.target.value)} required placeholder="e.g. County Invite" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              <input type="text" value={meetName} onChange={e => setMeetName(e.target.value)} required placeholder="e.g. Semi-State Invite" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -229,50 +335,15 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
                 <input type="text" value={meetTime} onChange={e => setMeetTime(e.target.value)} required placeholder="e.g. 17:14" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
               </div>
             </div>
-            <button type="submit" disabled={!supabaseConnected} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Save Meet Time</button>
+            <button type="submit" disabled={!supabaseConnected || selectedAthlete === 'overall'} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Save Meet Time</button>
           </form>
 
           {/* Right Side: Dynamic SVG Plot */}
-          <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: '300px' }}>
+          <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: '300px', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.06)' }}>
             <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1rem' }}>
-              {selectedAthlete ? `${selectedAthlete} - 5K Progression` : "Progression Plot Grid"}
+              {selectedAthlete === 'overall' ? "Roster Progression Overall" : `${selectedAthlete} - 5K Progression`}
             </h4>
-
-            {plotPoints.length >= 2 ? (
-              <div style={{ position: 'relative', width: '100%', flex: 1 }}>
-                <svg viewBox="0 0 520 220" style={{ width: '100%', height: '100%' }}>
-                  <line x1="50" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeWidth="1" />
-                  <line x1="50" y1="100" x2="500" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-                  <line x1="50" y1="180" x2="500" y2="180" stroke="#f1f5f9" strokeWidth="1" />
-                  <line x1="50" y1="180" x2="500" y2="180" stroke="var(--text3)" strokeWidth="2" />
-
-                  <polyline
-                    fill="none"
-                    stroke="var(--red)"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    points={plotPoints.map(p => `${p.x},${p.y}`).join(' ')}
-                  />
-
-                  {plotPoints.map((p, index) => (
-                    <g key={index}>
-                      <circle cx={p.x} cy={p.y} r="6" fill="var(--accent)" stroke="#ffffff" strokeWidth="2" />
-                      <text x={p.x} y={p.y - 12} fontSize="9" fontFamily="var(--font-mono)" textAnchor="middle" fill="var(--text)" fontWeight="bold">
-                        {p.time}
-                      </text>
-                      <text x={p.x} y="205" fontSize="8" fontFamily="var(--font-mono)" textAnchor="middle" fill="var(--text3)">
-                        {p.meet.substring(0, 8)}..
-                      </text>
-                    </g>
-                  ))}
-                </svg>
-              </div>
-            ) : (
-              <div style={{ flex: 1, border: '1px dashed var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize: '13px', textAlign: 'center', padding: '2rem' }}>
-                Select an athlete with at least two logged meet results to generate a trendline.
-              </div>
-            )}
+            {renderSVGGraph()}
           </div>
         </div>
       </div>
