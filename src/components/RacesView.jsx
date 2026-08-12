@@ -11,15 +11,15 @@ const CalendarIcon = ({ size = 18, color = "currentColor" }) => (
   </svg>
 );
 
-export default function RacesView({ races, supabaseConnected, onRefresh }) {
-  const [calendarType, setCalendarType] = useState('team');
+export default function RacesView({ races, supabaseConnected, onRefresh, showToast }) {
+  const [calendarType, setCalendarType] = useState('team'); // 'team' or 'personal'
   const [currentYear, setCurrentYear] = useState(2026);
   const [currentMonth, setCurrentMonth] = useState(7); // 0 = Jan, 7 = Aug
   
   // Form states
   const [name, setName] = useState('');
   const [date, setDate] = useState('2026-08-10');
-  const [dist, setDist] = useState('5K');
+  const [dist, setDist] = useState('5K'); // Defaults to 5K
   const [status, setStatus] = useState('upcoming');
   const [notes, setNotes] = useState('');
 
@@ -54,7 +54,6 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
     if (!name.trim() || !date) return;
 
     if (supabaseConnected) {
-      // FIX: Generate unique ID on the frontend using Date.now() to bypass the null primary key constraint
       const { error } = await supabase.from('run_races').insert({
         id: Date.now(), 
         name,
@@ -66,9 +65,10 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
       });
       if (!error) {
         setName(''); setNotes('');
+        showToast("Race successfully scheduled on calendar!", "success");
         onRefresh();
       } else {
-        alert("Database error: " + error.message);
+        showToast("Error scheduling event: " + error.message, "warning");
       }
     }
   };
@@ -76,6 +76,7 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
   const handleDeleteRace = async (id) => {
     if (supabaseConnected) {
       await supabase.from('run_races').delete().eq('id', id);
+      showToast("Race event deleted.", "warning");
       onRefresh();
     }
   };
@@ -96,7 +97,7 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
 
   return (
     <div>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TEAM & PERSONAL CALENDARS</h2>
         <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan upcoming events in an interactive grid view. Toggle between lists or add races directly by clicking any calendar day.</p>
       </div>
@@ -185,8 +186,18 @@ export default function RacesView({ races, supabaseConnected, onRefresh }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Distance</label>
-                <input type="text" value={dist} onChange={e => setDist(e.target.value)} placeholder="e.g. 5K" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Event Distance</label>
+                {/* UPGRADED: Dynamic dropdown of event distances instead of a manual text field */}
+                <select value={dist} onChange={e => setDist(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                  <option value="5K">5K XC / Track</option>
+                  <option value="10K">10K Road / Track</option>
+                  <option value="Half Marathon">Half Marathon</option>
+                  <option value="Marathon">Marathon</option>
+                  <option value="Mile">Mile / 1600m</option>
+                  <option value="800m">800m</option>
+                  <option value="400m">400m</option>
+                  <option value="Other">Other Distance</option>
+                </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Status</label>
