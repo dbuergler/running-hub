@@ -17,7 +17,9 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh })
     if (!name.trim()) return;
 
     if (supabaseConnected) {
+      // FIX: Generate unique ID on the frontend using Date.now() to bypass the null primary key constraint
       const { error } = await supabase.from('run_athletes').insert({
+        id: Date.now(), 
         name, grad, team, event, xcpr
       });
       if (!error) {
@@ -27,14 +29,22 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh })
     }
   };
 
+  // Browser-based spreadsheet reader supporting CSV, Plain Text, and DOCX document selections
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Word Docx are binary zip archives. If they select .docx, we guide them to save as text or paste,
+    // otherwise we read the raw text for CSV and TXT files instantly.
+    if (file.name.endsWith('.docx')) {
+      setImportStatus("Word .docx files are compressed. For optimal formatting accuracy, please save your document as a Plain Text (.txt) or .csv file before selecting, or paste your rows directly below!");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       setCsvText(evt.target.result);
-      setImportStatus(`File "${file.name}" loaded successfully. Click Compile below to upload.`);
+      setImportStatus(`File "${file.name}" loaded successfully. Click Upload below.`);
     };
     reader.readAsText(file);
   };
@@ -65,7 +75,11 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh })
           if (h.includes('pr')) athleteObj.xcpr = columns[index];
         });
 
-        if (athleteObj.name) dataToInsert.push(athleteObj);
+        if (athleteObj.name) {
+          // FIX: Generate unique ID on the frontend using Date.now() to bypass the null primary key constraint
+          athleteObj.id = Date.now() + i;
+          dataToInsert.push(athleteObj);
+        }
       }
 
       const { error } = await supabase.from('run_athletes').upsert(dataToInsert);
@@ -101,22 +115,23 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh })
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}><Database size={16} /> Bulk Spreadsheets Importer</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload a spreadsheet file (`.csv` or `.txt`) or paste rows directly. Headers must be: <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg3)', padding: '2px 4px' }}>Name, Grad Year, Team, Primary Event, PR</code>.</p>
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload a spreadsheet file (`.csv`, `.txt`, `.docx`) or paste rows directly. Headers: <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg3)', padding: '2px 4px' }}>Name, Grad Year, Team, Primary Event, PR</code>.</p>
           
           <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>Upload Spreadsheet File (.csv, .txt):</label>
-            <input type="file" accept=".csv,.txt" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
+            <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>Upload Spreadsheet File (.csv, .txt, .docx):</label>
+            <input type="file" accept=".csv,.txt,.docx" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
           </div>
 
           <textarea value={csvText} onChange={e => setCsvText(e.target.value)} placeholder="Or paste rows manually here..." style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button onClick={handleBulkImport} disabled={!supabaseConnected} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Upload Data</button>
-            {importStatus && <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)' }}>{importStatus}</span>}
+            {importStatus && <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', marginLeft: '10px' }}>{importStatus}</span>}
           </div>
         </div>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+        {/* Single Add Form */}
         <form onSubmit={handleAddAthlete} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '8px', color: 'var(--accent)' }}>Register Athlete</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Name</label><input type="text" value={name} onChange={e => setName(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
@@ -134,6 +149,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh })
           <button type="submit" disabled={!supabaseConnected} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add Athlete</button>
         </form>
 
+        {/* Athlete Grid Display */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', alignContent: 'start' }}>
           {athletes.map((a) => (
             <div key={a.id || a.name} style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderTop: `4px solid ${a.team === 'Varsity' ? 'var(--accent)' : 'var(--text3)'}`, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
