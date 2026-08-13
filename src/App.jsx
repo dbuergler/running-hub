@@ -290,12 +290,12 @@ export default function App() {
         </div>
       )}
 
-      {/* NAVBAR */}
+      {/* NAVBAR WITH RONCALLI R LOGO COMPONENT */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3.5px solid var(--red)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '58px', justifyContent: 'space-between' }}>
           
           <div onClick={() => handlePageSelect('home')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-            <RoncalliLogo size={32} />
+            <RoncalliLogo size={34} />
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: supabaseConnected ? '#4ade80' : '#f87171', border: '1px solid #ffffff' }} />
           </div>
 
