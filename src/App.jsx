@@ -104,11 +104,11 @@ export default function App() {
     document.documentElement.style.setProperty('--red', '#c61030'); // Roncalli Red
     document.documentElement.style.setProperty('--blue', '#005bb7');
 
-    // Dynamic Roncalli R browser favicon
+    // Dynamic PNG favicon connector
     const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
-    link.type = 'image/svg+xml';
+    link.type = 'image/png';
     link.rel = 'shortcut icon';
-    link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 115" fill="none"><path d="M15 10 H62 C82 10 92 24 92 42 C92 58 80 70 62 72 L85 108 H65 L46 72 H32 V108 H15 V10 Z" fill="%23c61030"/><path d="M20 15 H59 C75 15 85 27 85 42 C85 54 75 65 59 65 H27 V103 H20 V15 Z" fill="%23ffffff"/><path d="M38 27 H54 C62 27 68 32 68 40 C68 48 62 52 54 52 H38 V27 Z" fill="%23c61030"/><path d="M42 31 H52 C58 31 63 35 63 40 C63 45 58 48 52 48 H42 V31 Z" fill="%23ffffff"/><path d="M26 20 H33 V95 H26 Z" fill="%23003366"/><path d="M18 36 H41 V43 H18 Z" fill="%23003366"/><path d="M52 65 L76 103 H60 L38 65 H52 Z" fill="%23c61030"/></svg>';
+    link.href = '/logo.png';
     document.getElementsByTagName('head')[0].appendChild(link);
 
     const style = document.createElement('style');
@@ -267,9 +267,15 @@ export default function App() {
 
   const [selectedDayInfo, setSelectedDayInfo] = useState(null);
 
-  const personalLoggedMiles = Object.values(logs).reduce((sum, item) => sum + (parseFloat(item.miles) || 0), 0);
-  const personalGoal = 100;
-  const personalProgressPercentage = Math.min(100, Math.round((personalLoggedMiles / personalGoal) * 100));
+  // --- DYNAMIC PER-MONTH PERSONAL MILEAGE CALCULATION ---
+  const activeMonthWeeks = currentMonthObj.weeks; // e.g. [3, 4, 5, 6] for August
+  const monthlyPersonalMiles = Object.entries(logs).reduce((sum, [key, item]) => {
+    const weekNum = parseInt(key.replace('w', '').split('d')[0], 10);
+    if (activeMonthWeeks.includes(weekNum) && item && item.done) {
+      return sum + (parseFloat(item.miles) || 0);
+    }
+    return sum;
+  }, 0);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -290,12 +296,12 @@ export default function App() {
         </div>
       )}
 
-      {/* NAVBAR WITH RONCALLI R LOGO COMPONENT */}
+      {/* NAVBAR WITH PNG LOGO CONNECTOR */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3.5px solid var(--red)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '58px', justifyContent: 'space-between' }}>
           
           <div onClick={() => handlePageSelect('home')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-            <RoncalliLogo size={34} />
+            <RoncalliLogo size={36} />
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: supabaseConnected ? '#4ade80' : '#f87171', border: '1px solid #ffffff' }} />
           </div>
 
@@ -359,15 +365,13 @@ export default function App() {
               <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan and log your training cycle inside an interactive calendar grid. Click any calendar day to log metrics or edit the prescription.</p>
             </div>
 
-            {/* PERSONAL MILEAGE GOAL PROGRESS BAR */}
-            <div style={{ background: 'var(--bg2)', padding: '1.25rem 1.5rem', borderRadius: '10px', border: '1px solid var(--border)', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.04)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}><Trophy size={16} color="var(--red)" /> MY PERSONAL LOGGED MILEAGE</h4>
-                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--red)' }}>{personalLoggedMiles.toFixed(1)} / {personalGoal} MILES ({personalProgressPercentage}%)</span>
+            {/* UNCAPPED DYNAMIC MONTHLY PERSONAL MILEAGE CARD */}
+            <div style={{ background: 'var(--bg2)', padding: '1.25rem 1.5rem', borderRadius: '10px', border: '1px solid var(--border)', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}><Trophy size={16} color="var(--red)" /> MY PERSONAL LOGGED MILEAGE FOR {currentMonthObj.name.toUpperCase()}</h4>
+                <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>Total distance logged during {currentMonthObj.name} ({currentMonthObj.weeks.length} training weeks).</p>
               </div>
-              <div style={{ background: 'var(--bg3)', borderRadius: '6px', height: '12px', overflow: 'hidden' }}>
-                <div style={{ width: `${personalProgressPercentage}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent) 0%, var(--red) 100%)', transition: 'width 0.4s ease' }} />
-              </div>
+              <span style={{ fontSize: '22px', fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--red)' }}>{monthlyPersonalMiles.toFixed(1)} MILES</span>
             </div>
 
             {/* MONTH FILTER */}
