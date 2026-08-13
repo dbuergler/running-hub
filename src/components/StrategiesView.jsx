@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, FileText, TrendingUp, Upload } from 'lucide-react';
+import { Trash2, FileText, TrendingUp, X } from 'lucide-react';
 
 export default function StrategiesView({ strategies, xcResults, athletes, supabaseConnected, onRefresh, showToast }) {
   const [title, setTitle] = useState('');
@@ -9,9 +9,11 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
   const [rawPasteText, setRawPasteText] = useState('');
   const [importStatus, setImportStatus] = useState('');
   const [showImporter, setShowImporter] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  const fileInputRef = useRef(null);
 
   // States for the Athlete Progression Graph
-  const [selectedAthlete, setSelectedAthlete] = useState('overall'); // Defaults to 'overall'
+  const [selectedAthlete, setSelectedAthlete] = useState('overall'); 
   const [meetName, setMeetName] = useState('');
   const [meetDate, setMeetDate] = useState('');
   const [meetTime, setMeetTime] = useState('');
@@ -38,24 +40,54 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     }
   };
 
+  // Browser-based File Reader with client-side text extractor
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.name.endsWith('.docx') || file.name.endsWith('.pdf')) {
-      showToast("Binary file loaded! For optimal results, please copy-paste your text directly below.", "warning");
-      return;
-    }
+    setSelectedFileName(file.name);
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      setRawPasteText(evt.target.result);
-      showToast(`File "${file.name}" parsed! Review below and click Import.`, "success");
-    };
-    reader.readAsText(file);
+    if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
+      reader.readAsArrayBuffer(file);
+      reader.onload = (evt) => {
+        const buffer = evt.target.result;
+        const bytes = new Uint8Array(buffer);
+        let str = '';
+        for (let i = 0; i < bytes.length; i++) {
+          const char = bytes[i];
+          if ((char >= 32 && char <= 126) || char === 10 || char === 13) {
+            str += String.fromCharCode(char);
+          } else if (char === 0 || char === 9) {
+            str += ' ';
+          }
+        }
+        const cleanedText = str
+          .replace(/[^\x20-\x7E\n\r\t]/g, '')
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 3)
+          .join('\n');
+
+        setRawPasteText(cleanedText);
+        showToast(`Extracted readable text from "${file.name}"!`, "success");
+      };
+    } else {
+      reader.readAsText(file);
+      reader.onload = (evt) => {
+        setRawPasteText(evt.target.result);
+        showToast(`Loaded "${file.name}"!`, "success");
+      };
+    }
   };
 
-  // Upgraded: Smart Regex Headerless Parser
+  const clearSelectedFile = () => {
+    setSelectedFileName('');
+    setRawPasteText('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    showToast("Selected file cleared.", "warning");
+  };
+
   const handleBulkImport = async () => {
     if (!rawPasteText.trim() || !supabaseConnected) return;
 
@@ -81,6 +113,8 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
 
       showToast(`Successfully imported ${listToInsert.length} race plans!`, "success");
       setRawPasteText('');
+      setSelectedFileName('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       onRefresh();
     } catch (err) {
       showToast("Error importing data: " + err.message, "warning");
@@ -127,7 +161,6 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     return parts[0] * 60 + parts[1];
   };
 
-  // Equivalent scale calculation values
   const getGraphScalingMetrics = (filteredResults) => {
     const timesInSeconds = filteredResults.map(r => timeToSeconds(r.time)).filter(s => s > 0);
     const minSec = timesInSeconds.length ? Math.min(...timesInSeconds) : 900;
@@ -140,17 +173,14 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     };
   };
 
-  // Plot Renderer logic supporting single-athlete lines or ALL athletes layered together
   const renderSVGGraph = () => {
     if (selectedAthlete === 'overall') {
-      // Group all meet results by athlete
       const grouped = {};
       xcResults.forEach(r => {
         if (!grouped[r.athlete]) grouped[r.athlete] = [];
         grouped[r.athlete].push(r);
       });
 
-      // Filter to keep only athletes with 2 or more logged performances
       const validAthletes = Object.keys(grouped).filter(ath => grouped[ath].length >= 2);
       if (validAthletes.length === 0) {
         return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text3)' }}>Add at least 2 meet results for one or more athletes to plot.</div>;
@@ -200,7 +230,6 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
       );
     } else {
-      // Render Single Athlete Line
       const runnerData = xcResults
         .filter(r => r.athlete === selectedAthlete)
         .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -254,6 +283,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
         <button 
           onClick={() => setShowImporter(!showImporter)} 
+          className="btn-interactive"
           style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
         >
           <FileText size={14} /> {showImporter ? "Close Bulk Importer" : "Import Plans from Docs / Excel"}
@@ -264,14 +294,32 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>Excel, Docs, or CSV Clipboard Importer</h3>
           <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem', lineHeight: 1.5 }}>
-            Upload a spreadsheet file (`.csv`, `.txt`, `.docx`, `.pdf`) or paste rows directly. No headers required!
+            Upload any spreadsheet file (`.csv`, `.txt`, `.docx`, `.pdf`) or paste rows directly below.
           </p>
-          <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <input type="file" accept=".csv,.txt,.docx,.pdf" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept=".csv,.txt,.docx,.pdf" 
+              onChange={handleFileUpload} 
+              style={{ fontSize: '13px', flex: 1 }} 
+            />
+            {selectedFileName && (
+              <button 
+                type="button" 
+                onClick={clearSelectedFile} 
+                title="Clear file"
+                style={{ background: 'var(--red)', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
+
           <textarea value={rawPasteText} onChange={e => setRawPasteText(e.target.value)} placeholder="Or paste manually here..." style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border2)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <button onClick={handleBulkImport} disabled={!supabaseConnected} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Compile & Import Plans</button>
+            <button onClick={handleBulkImport} disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Compile & Import Plans</button>
             {importStatus && <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{importStatus}</span>}
           </div>
         </div>
@@ -285,13 +333,13 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Plan Name</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Tags</label><input type="text" value={tags} onChange={e => setTags(e.target.value)} placeholder="XC, Hills" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Plan Details</label><textarea value={content} onChange={e => setContent(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px', minHeight: '120px' }} /></div>
-            <button type="submit" disabled={!supabaseConnected} style={{ background: 'var(--red)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add to Database</button>
+            <button type="submit" disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--red)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add to Database</button>
           </form>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {currentDisplayList.slice(0, 4).map((s) => (
-            <div key={s.id || s.title} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)' }}>
+            <div key={s.id || s.title} className="card-interactive" style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{s.title}</h4>
                 {supabaseConnected && s.id && <button onClick={() => handleDelete(s.id)} style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer' }}><Trash2 size={16} /></button>}
@@ -312,7 +360,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
           {/* Left Side: Add Result Form */}
           <form onSubmit={handleAddXCResult} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>Log Season Meet Time</h4>
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight 700, color: 'var(--accent)' }}>Log Season Meet Time</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Select Athlete</label>
               <select value={selectedAthlete} onChange={e => setSelectedAthlete(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
@@ -334,12 +382,12 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
                 <input type="text" value={meetTime} onChange={e => setMeetTime(e.target.value)} required placeholder="e.g. 17:14" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
               </div>
             </div>
-            <button type="submit" disabled={!supabaseConnected || selectedAthlete === 'overall'} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Save Meet Time</button>
+            <button type="submit" disabled={!supabaseConnected || selectedAthlete === 'overall'} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Save Meet Time</button>
           </form>
 
           {/* Right Side: Dynamic SVG Plot */}
           <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: '300px', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.06)' }}>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1rem' }}>
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight 700, color: 'var(--accent)', marginBottom: '1rem' }}>
               {selectedAthlete === 'overall' ? "Roster Progression Overall" : `${selectedAthlete} - 5K Progression`}
             </h4>
             {renderSVGGraph()}
