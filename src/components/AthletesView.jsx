@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Upload, Database, Trash2, Trophy } from 'lucide-react';
+import { Upload, Database, Trash2, X } from 'lucide-react';
 
 export default function AthletesView({ athletes, supabaseConnected, onRefresh, showToast }) {
   const [csvText, setCsvText] = useState('');
   const [importStatus, setImportStatus] = useState('');
   const [showImporter, setShowImporter] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  const fileInputRef = useRef(null);
+
   const [name, setName] = useState('');
   const [grad, setGrad] = useState('');
   const [team, setTeam] = useState('Varsity');
@@ -35,20 +38,49 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.name.endsWith('.docx') || file.name.endsWith('.pdf')) {
-      showToast("Binary file loaded! For optimal results, copy-paste your text directly below.", "warning");
-      return;
-    }
+    setSelectedFileName(file.name);
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      setCsvText(evt.target.result);
-      showToast(`Roster file "${file.name}" loaded successfully!`, "success");
-    };
-    reader.readAsText(file);
+    if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
+      reader.readAsArrayBuffer(file);
+      reader.onload = (evt) => {
+        const buffer = evt.target.result;
+        const bytes = new Uint8Array(buffer);
+        let str = '';
+        for (let i = 0; i < bytes.length; i++) {
+          const char = bytes[i];
+          if ((char >= 32 && char <= 126) || char === 10 || char === 13) {
+            str += String.fromCharCode(char);
+          } else if (char === 0 || char === 9) {
+            str += ' ';
+          }
+        }
+        const cleanedText = str
+          .replace(/[^\x20-\x7E\n\r\t]/g, '')
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 3)
+          .join('\n');
+
+        setCsvText(cleanedText);
+        showToast(`Extracted readable text from "${file.name}"!`, "success");
+      };
+    } else {
+      reader.readAsText(file);
+      reader.onload = (evt) => {
+        setCsvText(evt.target.result);
+        showToast(`Loaded "${file.name}"!`, "success");
+      };
+    }
   };
 
-  // Upgraded: Smart Regex Headerless Parser
+  const clearSelectedFile = () => {
+    setSelectedFileName('');
+    setCsvText('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    showToast("Selected file cleared.", "warning");
+  };
+
   const handleBulkImport = async () => {
     if (!csvText.trim() || !supabaseConnected) return;
 
@@ -103,6 +135,8 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
 
       showToast(`Successfully imported ${dataToInsert.length} athletes!`, "success");
       setCsvText('');
+      setSelectedFileName('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       onRefresh();
     } catch (err) {
       showToast("Error importing roster: " + err.message, "warning");
@@ -117,7 +151,6 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
     }
   };
 
-  // Team Stats Calculations
   const totalRoster = athletes.length;
   const varsityCount = athletes.filter(a => a.team === 'Varsity').length;
   const jvCount = athletes.filter(a => a.team === 'JV').length;
@@ -134,7 +167,6 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
         </button>
       </div>
 
-      {/* TEAM SQUAD QUICK STATS BAR */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '5px solid var(--accent)' }}>
           <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>TOTAL ATHLETES</span>
@@ -153,16 +185,31 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}><Database size={16} /> Bulk Spreadsheets Importer</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any spreadsheet file (`.csv`, `.txt`, `.docx`, `.pdf`) or paste rows directly. No headers required—our smart parser automatically detects data!</p>
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any file (`.csv`, `.txt`, `.docx`, `.pdf`) or paste rows directly. No headers required!</p>
           
-          <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>Upload Spreadsheet File (.csv, .txt, .docx, .pdf):</label>
-            <input type="file" accept=".csv,.txt,.docx,.pdf" onChange={handleFileUpload} style={{ fontSize: '13px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept=".csv,.txt,.docx,.pdf" 
+              onChange={handleFileUpload} 
+              style={{ fontSize: '13px', flex: 1 }} 
+            />
+            {selectedFileName && (
+              <button 
+                type="button" 
+                onClick={clearSelectedFile} 
+                title="Clear file"
+                style={{ background: 'var(--red)', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <textarea value={csvText} onChange={e => setCsvText(e.target.value)} placeholder="Or paste manually here..." style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <button onClick={handleBulkImport} disabled={!supabaseConnected} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Upload Data</button>
+            <button onClick={handleBulkImport} disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Upload Data</button>
             {importStatus && <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)' }}>{importStatus}</span>}
           </div>
         </div>
@@ -194,7 +241,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>PR</label><input type="text" value={xcpr} onChange={e => setXcpr(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
-          <button type="submit" disabled={!supabaseConnected} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add Athlete</button>
+          <button type="submit" disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add Athlete</button>
         </form>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', alignContent: 'start' }}>
