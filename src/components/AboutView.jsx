@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit2, MapPin, Trophy, User, Megaphone, Plus, Trash2, Award } from 'lucide-react';
+import { Edit2, MapPin, Trophy, User, Megaphone, Plus, Trash2, FileText, Globe } from 'lucide-react';
 import { RoncalliLogo } from '../App';
 
 export default function AboutView({ profile, athletes = [], supabaseConnected, onSaveProfile, showToast }) {
@@ -13,40 +13,35 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
   const [achievements, setAchievements] = useState(profile.achievements);
   const [weeklyMessage, setWeeklyMessage] = useState(profile.weeklyMessage || '');
 
-  // Accomplishments Timeline states
-  const [newHonor, setNewHonor] = useState('');
-  const [newYear, setNewYear] = useState('2026');
+  // Documents Registry states
+  const [docName, setDocName] = useState('');
+  const [docUrl, setDocUrl] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     onSaveProfile({ 
       name, role, location, bio, achievements, weeklyMessage, 
-      accomplishments: profile.accomplishments || []
+      documents: profile.documents || []
     });
     setEditing(false);
   };
 
-  const handleAddHonor = () => {
-    if (!newHonor.trim()) return;
-    const honorsList = profile.accomplishments || [];
-    const updatedHonors = [...honorsList, { year: newYear, title: newHonor }].sort((a,b) => b.year - a.year);
+  const handleAddDoc = () => {
+    if (!docName.trim() || !docUrl.trim()) return;
+    const docsList = profile.documents || [];
+    const updatedDocs = [...docsList, { name: docName, url: docUrl }];
     
-    onSaveProfile({ ...profile, accomplishments: updatedHonors });
-    setNewHonor('');
-    showToast("Honor successfully recorded!", "success");
+    onSaveProfile({ ...profile, documents: updatedDocs });
+    setDocName(''); setDocUrl('');
+    showToast("Team document registered!", "success");
   };
 
-  const handleDeleteHonor = (indexToDelete) => {
-    const honorsList = profile.accomplishments || [];
-    const updatedHonors = honorsList.filter((_, i) => i !== indexToDelete);
-    onSaveProfile({ ...profile, accomplishments: updatedHonors });
-    showToast("Honor entry deleted.", "warning");
+  const handleDeleteDoc = (indexToDelete) => {
+    const docsList = profile.documents || [];
+    const updatedDocs = docsList.filter((_, i) => i !== indexToDelete);
+    onSaveProfile({ ...profile, documents: updatedDocs });
+    showToast("Document link removed.", "warning");
   };
-
-  const dynamicHonors = profile.accomplishments || [
-    { year: '2025', title: 'XC Boys Sectional Champions' },
-    { year: '2024', title: 'Marion County Coach of the Year' }
-  ];
 
   const parseTimeToSeconds = (t) => {
     if (!t) return 999999;
@@ -60,6 +55,11 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
     .filter(a => a.xcpr)
     .sort((a, b) => parseTimeToSeconds(a.xcpr) - parseTimeToSeconds(b.xcpr))
     .slice(0, 5);
+
+  const dynamicDocs = profile.documents || [
+    { name: 'RHS Athletics Physical Form', url: 'https://roncalliathletics.org' },
+    { name: '2026 Team Code of Conduct', url: 'https://roncalliathletics.org' }
+  ];
 
   return (
     <div>
@@ -154,26 +154,26 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
             </div>
           </div>
 
-          {/* DYNAMIC ACCOMPLISHMENTS TIMELINE */}
+          {/* DYNAMIC HANDOUTS & DOCUMENTS REGISTRY */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '2.5rem' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Award size={20} /> TEAM CHAMPIONSHIPS & HONORS</h3>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><FileText size={20} /> ATHLETE HANDOUTS & DOCUMENTS HUB</h3>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
               <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '12px' }}>Log New Team Honor</h4>
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                  <input type="text" value={newYear} onChange={e => setNewYear(e.target.value)} placeholder="Year" style={{ width: '80px', padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
-                  <input type="text" value={newHonor} onChange={e => setNewHonor(e.target.value)} placeholder="e.g. Marion County Champions" style={{ flex: 1, padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight 700, color: 'var(--accent)', marginBottom: '12px' }}>Link New Handout</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
+                  <input type="text" value={docName} onChange={e => setDocName(e.target.value)} placeholder="File Name (e.g. Pre-Race Nutrition PDF)" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+                  <input type="text" value={docUrl} onChange={e => setDocUrl(e.target.value)} placeholder="Google Drive Shareable Link URL" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
                 </div>
-                <button onClick={handleAddHonor} className="btn-interactive" style={{ width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><Plus size={14} /> Add Achievement</button>
+                <button onClick={handleAddDoc} className="btn-interactive" style={{ width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><Plus size={14} /> Link Document</button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {dynamicHonors.map((item, index) => (
-                  <div key={index} style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'var(--bg2)', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border)', position: 'relative' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: 'var(--red)', minWidth: '40px' }}>{item.year}</span>
-                    <span style={{ fontSize: '13px', color: 'var(--text2)', fontWeight: 600 }}>{item.title}</span>
-                    <button onClick={() => handleDeleteHonor(index)} style={{ border: 'none', background: 'none', color: 'var(--text3)', cursor: 'pointer', marginLeft: 'auto' }}><Trash2 size={13} /></button>
+                {dynamicDocs.map((item, index) => (
+                  <div key={index} style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'var(--bg2)', padding: '12px 15px', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.03)' }}>
+                    <Globe style={{ color: 'var(--accent)' }} size={18} />
+                    <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', color: 'var(--accent2)', fontWeight: 600, textDecoration: 'none' }}>{item.name}</a>
+                    <button onClick={() => handleDeleteDoc(index)} style={{ border: 'none', background: 'none', color: 'var(--text3)', cursor: 'pointer', marginLeft: 'auto' }}><Trash2 size={13} /></button>
                   </div>
                 ))}
               </div>
