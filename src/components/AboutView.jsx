@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Edit2, MapPin, Trophy, User, Megaphone, Plus, Trash2, FileText, Globe } from 'lucide-react';
-import { RoncalliLogo } from '../App';
+import { Edit2, MapPin, Trophy, User, Megaphone, Plus, Trash2, FileText, Globe, Award } from 'lucide-react';
+import RoncalliLogo from './RoncalliLogo';
 
 export default function AboutView({ profile, athletes = [], supabaseConnected, onSaveProfile, showToast }) {
   const [editing, setEditing] = useState(false);
@@ -50,6 +50,7 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
     return parts[0] * 60 + parts[1];
   };
 
+  // Safe fallback guard to guarantee athletes array is iterable
   const safeAthletes = Array.isArray(athletes) ? athletes : [];
   const sortedLeaderboard = [...safeAthletes]
     .filter(a => a.xcpr)
@@ -160,7 +161,7 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
               <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight 700, color: 'var(--accent)', marginBottom: '12px' }}>Link New Handout</h4>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '12px' }}>Link New Handout</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
                   <input type="text" value={docName} onChange={e => setDocName(e.target.value)} placeholder="File Name (e.g. Pre-Race Nutrition PDF)" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
                   <input type="text" value={docUrl} onChange={e => setDocUrl(e.target.value)} placeholder="Google Drive Shareable Link URL" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
