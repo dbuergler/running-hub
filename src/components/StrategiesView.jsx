@@ -40,7 +40,6 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     }
   };
 
-  // Browser-based File Reader with client-side text extractor
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -360,7 +359,8 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
           {/* Left Side: Add Result Form */}
           <form onSubmit={handleAddXCResult} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight 700, color: 'var(--accent)' }}>Log Season Meet Time</h4>
+            {/* FIX: Replaced fontWeight 700 with fontWeight: 700 */}
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>Log Season Meet Time</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Select Athlete</label>
               <select value={selectedAthlete} onChange={e => setSelectedAthlete(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
@@ -387,7 +387,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
 
           {/* Right Side: Dynamic SVG Plot */}
           <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: '300px', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.06)' }}>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight 700, color: 'var(--accent)', marginBottom: '1rem' }}>
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1rem' }}>
               {selectedAthlete === 'overall' ? "Roster Progression Overall" : `${selectedAthlete} - 5K Progression`}
             </h4>
             {renderSVGGraph()}
