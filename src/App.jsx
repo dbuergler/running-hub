@@ -12,18 +12,21 @@ import CoachingCalculator from './components/CoachingCalculator';
 
 // --- Accurate Roncalli "R" Vector Logo ---
 export const RoncalliLogo = ({ size = 32 }) => (
-  <svg width={size} height={size * 1.1} viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>
-    {/* White Outer Border Shield */}
-    <path d="M20 10 H60 C78 10 88 22 88 40 C88 55 78 65 62 67 L82 102 H64 L46 68 H36 V102 H20 V10 Z" fill="#ffffff" stroke="#c61030" strokeWidth="4" />
-    {/* Inner Red Block R Body */}
-    <path d="M25 15 H56 C70 15 80 25 80 40 C80 52 70 62 56 62 H31 V96 H25 V15 Z" fill="#c61030" />
-    {/* Inner White Cutout of Loop */}
-    <path d="M38 27 H54 C62 27 68 32 68 40 C68 48 62 52 54 52 H38 V27 Z" fill="#ffffff" />
-    {/* Inner Blue Sword Accent in Left Stem */}
-    <path d="M28 20 H34 V90 H28 Z" fill="#003366" />
-    <path d="M22 35 H40 V42 H22 Z" fill="#003366" />
-    {/* Slanted Right Red Leg */}
-    <path d="M50 62 L74 96 H60 L38 62 H50 Z" fill="#c61030" stroke="#ffffff" strokeWidth="2" />
+  <svg width={size} height={size * 1.15} viewBox="0 0 100 115" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))' }}>
+    {/* Outer Red Shadow/Border Path */}
+    <path d="M15 10 H62 C82 10 92 24 92 42 C92 58 80 70 62 72 L85 108 H65 L46 72 H32 V108 H15 V10 Z" fill="#c61030" />
+    {/* Inner White Body Path */}
+    <path d="M20 15 H59 C75 15 85 27 85 42 C85 54 75 65 59 65 H27 V103 H20 V15 Z" fill="#ffffff" />
+    {/* Inner Loop Cutout in Red */}
+    <path d="M38 27 H54 C62 27 68 32 68 40 C68 48 62 52 54 52 H38 V27 Z" fill="#c61030" />
+    {/* Inner White Cutout inside Loop */}
+    <path d="M42 31 H52 C58 31 63 35 63 40 C63 45 58 48 52 48 H42 V31 Z" fill="#ffffff" />
+    {/* Royal Blue Sword in Left Stem */}
+    <path d="M26 20 H33 V95 H26 Z" fill="#003366" />
+    {/* Sword Crossguard */}
+    <path d="M18 36 H41 V43 H18 Z" fill="#003366" />
+    {/* Diagonal Leg Accent in Crimson Red */}
+    <path d="M52 65 L76 103 H60 L38 65 H52 Z" fill="#c61030" />
   </svg>
 );
 
@@ -124,7 +127,7 @@ export default function App() {
     const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
     link.type = 'image/svg+xml';
     link.rel = 'shortcut icon';
-    link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110" fill="none"><path d="M20 10 H60 C78 10 88 22 88 40 C88 55 78 65 62 67 L82 102 H64 L46 68 H36 V102 H20 V10 Z" fill="%23ffffff" stroke="%23c61030" stroke-width="4"/><path d="M25 15 H56 C70 15 80 25 80 40 C80 52 70 62 56 62 H31 V96 H25 V15 Z" fill="%23c61030"/><path d="M38 27 H54 C62 27 68 32 68 40 C68 48 62 52 54 52 H38 V27 Z" fill="%23ffffff"/><path d="M28 20 H34 V90 H28 Z" fill="%23003366"/><path d="M22 35 H40 V42 H22 Z" fill="%23003366"/><path d="M50 62 L74 96 H60 L38 62 H50 Z" fill="%23c61030" stroke="%23ffffff" stroke-width="2"/></svg>';
+    link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 115" fill="none"><path d="M15 10 H62 C82 10 92 24 92 42 C92 58 80 70 62 72 L85 108 H65 L46 72 H32 V108 H15 V10 Z" fill="%23c61030"/><path d="M20 15 H59 C75 15 85 27 85 42 C85 54 75 65 59 65 H27 V103 H20 V15 Z" fill="%23ffffff"/><path d="M38 27 H54 C62 27 68 32 68 40 C68 48 62 52 54 52 H38 V27 Z" fill="%23c61030"/><path d="M42 31 H52 C58 31 63 35 63 40 C63 45 58 48 52 48 H42 V31 Z" fill="%23ffffff"/><path d="M26 20 H33 V95 H26 Z" fill="%23003366"/><path d="M18 36 H41 V43 H18 Z" fill="%23003366"/><path d="M52 65 L76 103 H60 L38 65 H52 Z" fill="%23c61030"/></svg>';
     document.getElementsByTagName('head')[0].appendChild(link);
 
     const style = document.createElement('style');
@@ -270,7 +273,6 @@ export default function App() {
   };
 
   const currentMonthObj = SEASON_MONTHS.find(m => m.id === activeMonth) || SEASON_MONTHS[1];
-  const weeksInMonth = currentMonthObj.weeks;
   const currentMonthIdx = SEASON_MONTHS.findIndex(m => m.id === activeMonth) + 6; 
 
   const firstDayIndex = new Date(currentYear, currentMonthIdx, 1).getDay();
@@ -283,9 +285,8 @@ export default function App() {
 
   const [selectedDayInfo, setSelectedDayInfo] = useState(null);
 
-  // Calculate Personal Logged Miles for the Tracker Progress Bar
   const personalLoggedMiles = Object.values(logs).reduce((sum, item) => sum + (parseFloat(item.miles) || 0), 0);
-  const personalGoal = 100; // Customizable monthly personal goal
+  const personalGoal = 100;
   const personalProgressPercentage = Math.min(100, Math.round((personalLoggedMiles / personalGoal) * 100));
 
   return (
@@ -308,7 +309,7 @@ export default function App() {
       )}
 
       {/* NAVBAR */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '4px solid var(--red)' }}>
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3.5px solid var(--red)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '58px', justifyContent: 'space-between' }}>
           
           <div onClick={() => handlePageSelect('home')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
@@ -406,25 +407,6 @@ export default function App() {
                   }}
                 >
                   {m.name}
-                </button>
-              ))}
-            </div>
-
-            {/* WEEK SELECTOR */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.5rem', borderBottom: '1px dashed var(--border)', paddingBottom: '12px' }}>
-              {weeksInMonth.map((wk) => (
-                <button
-                  key={wk}
-                  onClick={() => setActiveWeek(wk)}
-                  style={{
-                    padding: '6px 14px', borderRadius: '20px', border: '1px solid var(--border)',
-                    background: activeWeek === wk ? 'var(--red)' : 'transparent',
-                    color: activeWeek === wk ? '#ffffff' : 'var(--text3)',
-                    cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600,
-                    transition: 'all 0.12s ease'
-                  }}
-                >
-                  Week {wk}
                 </button>
               ))}
             </div>
