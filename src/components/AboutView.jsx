@@ -28,7 +28,6 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
     return parts[0] * 60 + parts[1];
   };
 
-  // Safe fallback guard to guarantee athletes array is iterable
   const safeAthletes = Array.isArray(athletes) ? athletes : [];
   const sortedLeaderboard = [...safeAthletes]
     .filter(a => a.xcpr)
@@ -81,7 +80,7 @@ export default function AboutView({ profile, athletes = [], supabaseConnected, o
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
             
-            {/* Visual card featuring Roncalli R logo */}
+            {/* Visual card featuring larger circular Roncalli Logo badge */}
             <div style={{ background: 'var(--accent)', color: '#ffffff', borderRadius: '15px', padding: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', borderBottom: '6px solid var(--red)', boxShadow: '0 10px 15px -3px rgba(15,43,92,0.15)' }}>
               <RoncalliLogo size={80} />
               <div style={{ textAlign: 'center' }}>
