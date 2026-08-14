@@ -1,22 +1,38 @@
 import React from 'react';
 
-export const RoncalliLogo = ({ size = 34, style = {} }) => {
+export const RoncalliLogo = ({ size = 42, style = {} }) => {
   return (
-    <img 
-      src="/logo.png" 
-      alt="Roncalli High School Athletics Logo" 
-      width={size} 
-      height={size}
+    <div
       style={{
-        objectFit: 'contain',
-        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: '50%',
+        overflow: 'hidden',
+        background: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: '2.5px solid var(--red)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+        flexShrink: 0,
+        transition: 'transform 0.2s ease',
         ...style
       }}
-      onError={(e) => {
-        // Fallback display handling if logo.png hasn't been uploaded to public/ yet
-        e.target.style.opacity = '0.5';
-      }}
-    />
+    >
+      <img 
+        src="/logo.png" 
+        alt="Roncalli Royals Logo" 
+        style={{
+          width: '88%',
+          height: '88%',
+          objectFit: 'contain'
+        }}
+        onError={(e) => {
+          // Fallback if logo.png is not loaded yet
+          e.target.style.display = 'none';
+        }}
+      />
+    </div>
   );
 };
 
