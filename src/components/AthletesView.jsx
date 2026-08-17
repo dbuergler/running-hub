@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { Upload, Database, Trash2, X } from 'lucide-react';
+import mammoth from 'mammoth';
 
 export default function AthletesView({ athletes, supabaseConnected, onRefresh, showToast }) {
   const [csvText, setCsvText] = useState('');
@@ -40,37 +41,29 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
 
     setSelectedFileName(file.name);
 
-    const reader = new FileReader();
-    if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
-      reader.readAsArrayBuffer(file);
+    if (file.name.endsWith('.docx')) {
+      const reader = new FileReader();
       reader.onload = (evt) => {
-        const buffer = evt.target.result;
-        const bytes = new Uint8Array(buffer);
-        let str = '';
-        for (let i = 0; i < bytes.length; i++) {
-          const char = bytes[i];
-          if ((char >= 32 && char <= 126) || char === 10 || char === 13) {
-            str += String.fromCharCode(char);
-          } else if (char === 0 || char === 9) {
-            str += ' ';
-          }
-        }
-        const cleanedText = str
-          .replace(/[^\x20-\x7E\n\r\t]/g, '')
-          .split('\n')
-          .map(line => line.trim())
-          .filter(line => line.length > 3)
-          .join('\n');
-
-        setCsvText(cleanedText);
-        showToast(`Extracted readable text from "${file.name}"!`, "success");
+        const arrayBuffer = evt.target.result;
+        mammoth.extractRawText({ arrayBuffer })
+          .then(result => {
+            setCsvText(result.value);
+            showToast(`Extracted roster text from Word document "${file.name}"!`, "success");
+          })
+          .catch(err => {
+            showToast("Error reading Word file: " + err.message, "warning");
+          });
       };
+      reader.readAsArrayBuffer(file);
+    } else if (file.name.endsWith('.pdf')) {
+      showToast("For PDF documents, please select and copy the text inside the PDF, then paste below.", "warning");
     } else {
-      reader.readAsText(file);
+      const reader = new FileReader();
       reader.onload = (evt) => {
         setCsvText(evt.target.result);
         showToast(`Loaded "${file.name}"!`, "success");
       };
+      reader.readAsText(file);
     }
   };
 
@@ -185,7 +178,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}><Database size={16} /> Bulk Spreadsheets Importer</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any file (`.csv`, `.txt`, `.docx`, `.pdf`) or paste rows directly. No headers required!</p>
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any spreadsheet or Word file (`.csv`, `.txt`, `.docx`) or paste rows directly. No headers required!</p>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
             <input 
