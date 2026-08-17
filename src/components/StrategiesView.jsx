@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, FileText, TrendingUp, X } from 'lucide-react';
+import { Trash2, FileText, TrendingUp, X, Edit2 } from 'lucide-react';
 import mammoth from 'mammoth';
+import { Modal } from '../App';
 
 export default function StrategiesView({ strategies, xcResults, athletes, supabaseConnected, onRefresh, showToast }) {
   const [title, setTitle] = useState('');
@@ -12,6 +13,9 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
   const [showImporter, setShowImporter] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState('');
   const fileInputRef = useRef(null);
+
+  // Modal State for Strategy Click
+  const [selectedPlanModal, setSelectedPlanModal] = useState(null);
 
   // States for the Athlete Progression Graph
   const [selectedAthlete, setSelectedAthlete] = useState('overall'); 
@@ -41,7 +45,6 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     }
   };
 
-  // Upgraded: Handles Word (.docx), CSV, and Text files with mammoth decoder
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -118,17 +121,8 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     if (supabaseConnected) {
       await supabase.from('run_resources').delete().eq('id', id);
       showToast("Race plan removed.", "warning");
+      setSelectedPlanModal(null);
       onRefresh();
-    }
-  };
-
-  const handleDeleteAllPlans = async () => {
-    if (supabaseConnected && window.confirm("Are you sure you want to delete all race plans from the database?")) {
-      const { error } = await supabase.from('run_resources').delete().neq('id', 0);
-      if (!error) {
-        showToast("All race plans cleared from database.", "warning");
-        onRefresh();
-      }
     }
   };
 
@@ -284,23 +278,13 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>COACHING RACE PLANS</h2>
           <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Add and configure custom race plans, tactical guides, or mental cues for your athletes.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {supabaseConnected && strategies.length > 0 && (
-            <button 
-              onClick={handleDeleteAllPlans} 
-              style={{ background: 'transparent', border: '1px solid var(--red)', color: 'var(--red)', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Clear All Plans
-            </button>
-          )}
-          <button 
-            onClick={() => setShowImporter(!showImporter)} 
-            className="btn-interactive"
-            style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <FileText size={14} /> {showImporter ? "Close Bulk Importer" : "Import Plans from Docs / Excel"}
-          </button>
-        </div>
+        <button 
+          onClick={() => setShowImporter(!showImporter)} 
+          className="btn-interactive"
+          style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          <FileText size={14} /> {showImporter ? "Close Bulk Importer" : "Import Plans from Docs / Excel"}
+        </button>
       </div>
 
       {showImporter && (
@@ -338,7 +322,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
       )}
 
-      {/* PLANS */}
+      {/* PLANS DISPLAY GRID WITH CLICKABLE MODALS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
         <div>
           <form onSubmit={handleAddStrategy} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -352,16 +336,51 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {currentDisplayList.map((s) => (
-            <div key={s.id || s.title} className="card-interactive" style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)' }}>
+            <div 
+              key={s.id || s.title} 
+              onClick={() => setSelectedPlanModal(s)}
+              className="card-interactive" 
+              style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)', cursor: 'pointer' }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{s.title}</h4>
-                {supabaseConnected && s.id && <button onClick={() => handleDelete(s.id)} style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer' }}><Trash2 size={16} /></button>}
+                <Edit2 size={15} style={{ color: 'var(--text3)' }} />
               </div>
-              <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6 }}>{s.content}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                {s.content}
+              </p>
             </div>
           ))}
         </div>
       </div>
+
+      {/* PLAN DETAIL MODAL WITH BLURRED BACKGROUND */}
+      <Modal 
+        isOpen={!!selectedPlanModal} 
+        onClose={() => setSelectedPlanModal(null)}
+        title={selectedPlanModal?.title || ''}
+      >
+        {selectedPlanModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <p style={{ fontSize: '14px', color: 'var(--text2)', lineHeight: 1.7 }}>{selectedPlanModal.content}</p>
+            {selectedPlanModal.tags && (
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '10px' }}>
+                {selectedPlanModal.tags.split(',').map(tag => (
+                  <span key={tag} style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', background: 'var(--bg3)', padding: '3px 8px', borderRadius: '4px' }}>{tag.trim()}</span>
+                ))}
+              </div>
+            )}
+            {supabaseConnected && selectedPlanModal.id && (
+              <button 
+                onClick={() => handleDelete(selectedPlanModal.id)} 
+                style={{ alignSelf: 'flex-start', border: 'none', background: 'var(--red)', color: '#fff', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Trash2 size={14} /> Delete Strategy
+              </button>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* --- SEASON PROGRESSION PLOT GRAPH --- */}
       <div style={{ borderTop: '2px solid var(--border)', paddingTop: '2.5rem' }}>
