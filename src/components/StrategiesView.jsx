@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { Trash2, FileText, TrendingUp, X } from 'lucide-react';
+import mammoth from 'mammoth';
 
 export default function StrategiesView({ strategies, xcResults, athletes, supabaseConnected, onRefresh, showToast }) {
   const [title, setTitle] = useState('');
@@ -40,43 +41,36 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
     }
   };
 
+  // Upgraded: Handles Word (.docx), CSV, and Text files with mammoth decoder
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setSelectedFileName(file.name);
 
-    const reader = new FileReader();
-    if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
-      reader.readAsArrayBuffer(file);
+    if (file.name.endsWith('.docx')) {
+      const reader = new FileReader();
       reader.onload = (evt) => {
-        const buffer = evt.target.result;
-        const bytes = new Uint8Array(buffer);
-        let str = '';
-        for (let i = 0; i < bytes.length; i++) {
-          const char = bytes[i];
-          if ((char >= 32 && char <= 126) || char === 10 || char === 13) {
-            str += String.fromCharCode(char);
-          } else if (char === 0 || char === 9) {
-            str += ' ';
-          }
-        }
-        const cleanedText = str
-          .replace(/[^\x20-\x7E\n\r\t]/g, '')
-          .split('\n')
-          .map(line => line.trim())
-          .filter(line => line.length > 3)
-          .join('\n');
-
-        setRawPasteText(cleanedText);
-        showToast(`Extracted readable text from "${file.name}"!`, "success");
+        const arrayBuffer = evt.target.result;
+        mammoth.extractRawText({ arrayBuffer })
+          .then(result => {
+            setRawPasteText(result.value);
+            showToast(`Extracted text from Word document "${file.name}"!`, "success");
+          })
+          .catch(err => {
+            showToast("Error decoding Word document: " + err.message, "warning");
+          });
       };
+      reader.readAsArrayBuffer(file);
+    } else if (file.name.endsWith('.pdf')) {
+      showToast("For PDF documents, please select and copy the text inside the PDF, then paste below.", "warning");
     } else {
-      reader.readAsText(file);
+      const reader = new FileReader();
       reader.onload = (evt) => {
         setRawPasteText(evt.target.result);
         showToast(`Loaded "${file.name}"!`, "success");
       };
+      reader.readAsText(file);
     }
   };
 
@@ -125,6 +119,16 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
       await supabase.from('run_resources').delete().eq('id', id);
       showToast("Race plan removed.", "warning");
       onRefresh();
+    }
+  };
+
+  const handleDeleteAllPlans = async () => {
+    if (supabaseConnected && window.confirm("Are you sure you want to delete all race plans from the database?")) {
+      const { error } = await supabase.from('run_resources').delete().neq('id', 0);
+      if (!error) {
+        showToast("All race plans cleared from database.", "warning");
+        onRefresh();
+      }
     }
   };
 
@@ -280,20 +284,30 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>COACHING RACE PLANS</h2>
           <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Add and configure custom race plans, tactical guides, or mental cues for your athletes.</p>
         </div>
-        <button 
-          onClick={() => setShowImporter(!showImporter)} 
-          className="btn-interactive"
-          style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <FileText size={14} /> {showImporter ? "Close Bulk Importer" : "Import Plans from Docs / Excel"}
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {supabaseConnected && strategies.length > 0 && (
+            <button 
+              onClick={handleDeleteAllPlans} 
+              style={{ background: 'transparent', border: '1px solid var(--red)', color: 'var(--red)', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Clear All Plans
+            </button>
+          )}
+          <button 
+            onClick={() => setShowImporter(!showImporter)} 
+            className="btn-interactive"
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <FileText size={14} /> {showImporter ? "Close Bulk Importer" : "Import Plans from Docs / Excel"}
+          </button>
+        </div>
       </div>
 
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>Excel, Docs, or CSV Clipboard Importer</h3>
           <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem', lineHeight: 1.5 }}>
-            Upload any spreadsheet file (`.csv`, `.txt`, `.docx`, `.pdf`) or paste rows directly below.
+            Upload any spreadsheet or Word document file (`.csv`, `.txt`, `.docx`) or paste rows directly below.
           </p>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
@@ -337,7 +351,7 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {currentDisplayList.slice(0, 4).map((s) => (
+          {currentDisplayList.map((s) => (
             <div key={s.id || s.title} className="card-interactive" style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{s.title}</h4>
@@ -359,7 +373,6 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
           {/* Left Side: Add Result Form */}
           <form onSubmit={handleAddXCResult} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* FIX: Replaced fontWeight 700 with fontWeight: 700 */}
             <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>Log Season Meet Time</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Select Athlete</label>
