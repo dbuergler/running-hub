@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Upload, Database, Trash2, X } from 'lucide-react';
+import { Upload, Database, Trash2, X, Edit2 } from 'lucide-react';
 import mammoth from 'mammoth';
+import { Modal } from '../App';
 
 export default function AthletesView({ athletes, supabaseConnected, onRefresh, showToast }) {
   const [csvText, setCsvText] = useState('');
@@ -10,11 +11,16 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
   const [selectedFileName, setSelectedFileName] = useState('');
   const fileInputRef = useRef(null);
 
+  // Modal State for Editing Runner
+  const [selectedAthleteModal, setSelectedAthleteModal] = useState(null);
+
+  // Form states supporting Lifetime PR vs. Current Season PR
   const [name, setName] = useState('');
   const [grad, setGrad] = useState('');
   const [team, setTeam] = useState('Varsity');
   const [event, setEvent] = useState('5K');
-  const [xcpr, setXcpr] = useState('');
+  const [xcpr, setXcpr] = useState(''); // Current Season PR
+  const [fivekpr, setFivekpr] = useState(''); // Lifetime PR
 
   const handleAddAthlete = async (e) => {
     e.preventDefault();
@@ -23,15 +29,38 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
     if (supabaseConnected) {
       const { error } = await supabase.from('run_athletes').insert({
         id: Date.now(), 
-        name, grad, team, event, xcpr
+        name, grad, team, event, xcpr, fivekpr
       });
       if (!error) {
-        setName(''); setGrad(''); setXcpr('');
+        setName(''); setGrad(''); setXcpr(''); setFivekpr('');
         showToast("Athlete successfully registered!", "success");
         onRefresh();
       } else {
         showToast("Error adding athlete: " + error.message, "warning");
       }
+    }
+  };
+
+  const handleUpdateAthleteModal = async (e) => {
+    e.preventDefault();
+    if (!selectedAthleteModal || !supabaseConnected) return;
+
+    const { error } = await supabase.from('run_athletes').upsert({
+      id: selectedAthleteModal.id,
+      name: selectedAthleteModal.name,
+      grad: selectedAthleteModal.grad,
+      team: selectedAthleteModal.team,
+      event: selectedAthleteModal.event,
+      xcpr: selectedAthleteModal.xcpr, // Current Season PR
+      fivekpr: selectedAthleteModal.fivekpr // Lifetime PR
+    });
+
+    if (!error) {
+      showToast("Athlete records updated!", "success");
+      setSelectedAthleteModal(null);
+      onRefresh();
+    } else {
+      showToast("Error updating athlete: " + error.message, "warning");
     }
   };
 
@@ -113,15 +142,11 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
             grad: athGrad,
             team: athTeam,
             event: athEvent,
-            xcpr: athPR
+            xcpr: athPR,
+            fivekpr: athPR
           });
         }
       });
-
-      if (dataToInsert.length === 0) {
-        showToast("Error: No valid athlete data found. Check spacing.", "warning");
-        return;
-      }
 
       const { error } = await supabase.from('run_athletes').upsert(dataToInsert);
       if (error) throw error;
@@ -139,6 +164,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
   const handleDeleteAthlete = async (id) => {
     if (supabaseConnected) {
       await supabase.from('run_athletes').delete().eq('id', id);
+      setSelectedAthleteModal(null);
       showToast("Athlete removed from roster.", "warning");
       onRefresh();
     }
@@ -153,7 +179,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
       <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TEAM ROSTER & STATS</h2>
-          <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Coordinate athletes, grad cycles, and manage season spreadsheets.</p>
+          <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Coordinate athletes, grad cycles, and track Lifetime vs. Season PRs.</p>
         </div>
         <button onClick={() => setShowImporter(!showImporter)} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Upload size={14} /> {showImporter ? "Close Roster Importer" : "Bulk Upload Season Data"}
@@ -178,7 +204,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}><Database size={16} /> Bulk Spreadsheets Importer</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any spreadsheet or Word file (`.csv`, `.txt`, `.docx`) or paste rows directly. No headers required!</p>
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any spreadsheet file (`.csv`, `.txt`, `.docx`) or paste rows directly. No headers required!</p>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
             <input 
@@ -209,6 +235,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+        {/* Register Form */}
         <form onSubmit={handleAddAthlete} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '8px', color: 'var(--accent)' }}>Register Athlete</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Name</label><input type="text" value={name} onChange={e => setName(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
@@ -230,28 +257,89 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
               <option value="Marathon">Marathon</option>
               <option value="Mile">Mile</option>
               <option value="800m">800m</option>
-              <option value="400m">400m</option>
             </select>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>PR</label><input type="text" value={xcpr} onChange={e => setXcpr(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Lifetime PR</label><input type="text" value={fivekpr} onChange={e => setFivekpr(e.target.value)} placeholder="e.g. 16:12" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Season PR</label><input type="text" value={xcpr} onChange={e => setXcpr(e.target.value)} placeholder="e.g. 16:45" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+          </div>
           <button type="submit" disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add Athlete</button>
         </form>
 
+        {/* Athlete Grid Display */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', alignContent: 'start' }}>
           {athletes.map((a) => (
-            <div key={a.id || a.name} className="card-interactive" style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderTop: `4px solid ${a.team === 'Varsity' ? 'var(--accent)' : 'var(--text3)'}`, display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
+            <div 
+              key={a.id || a.name} 
+              onClick={() => setSelectedAthleteModal(a)}
+              className="card-interactive" 
+              style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderTop: `4px solid ${a.team === 'Varsity' ? 'var(--accent)' : 'var(--text3)'}`, display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>Grad: {a.grad || '—'}</span>
                 <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: '4px', background: 'var(--bg3)' }}>{a.team}</span>
               </div>
               <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{a.name}</h4>
               <p style={{ fontSize: '12px', color: 'var(--text2)' }}><strong>Event:</strong> {a.event || '—'}</p>
-              {a.xcpr && <div style={{ marginTop: '5px', padding: '4px 8px', background: '#f8fafc', borderLeft: '3px solid var(--red)', fontSize: '12px', fontFamily: 'var(--font-mono)' }}><strong>PR:</strong> {a.xcpr}</div>}
-              {supabaseConnected && a.id && <button onClick={() => handleDeleteAthlete(a.id)} style={{ position: 'absolute', bottom: '12px', right: '12px', border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer' }}><Trash2 size={14} /></button>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                <div style={{ padding: '4px 8px', background: '#f8fafc', borderLeft: '3px solid var(--red)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+                  <strong>Season PR:</strong> {a.xcpr || '—'}
+                </div>
+                <div style={{ padding: '4px 8px', background: '#f8fafc', borderLeft: '3px solid var(--accent)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+                  <strong>Lifetime PR:</strong> {a.fivekpr || '—'}
+                </div>
+              </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* EDIT ATHLETE MODAL OVER BLURRED BACKGROUND */}
+      <Modal 
+        isOpen={!!selectedAthleteModal} 
+        onClose={() => setSelectedAthleteModal(null)}
+        title={selectedAthleteModal ? `Edit Athlete: ${selectedAthleteModal.name}` : ''}
+      >
+        {selectedAthleteModal && (
+          <form onSubmit={handleUpdateAthleteModal} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Name</label>
+              <input type="text" value={selectedAthleteModal.name} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, name: e.target.value })} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Grad Class</label>
+                <input type="text" value={selectedAthleteModal.grad || ''} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, grad: e.target.value })} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Team Group</label>
+                <select value={selectedAthleteModal.team || 'Varsity'} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, team: e.target.value })} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                  <option value="Varsity">Varsity</option><option value="JV">JV</option><option value="Freshman">Freshman</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Lifetime PR</label>
+                <input type="text" value={selectedAthleteModal.fivekpr || ''} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, fivekpr: e.target.value })} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Season PR</label>
+                <input type="text" value={selectedAthleteModal.xcpr || ''} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, xcpr: e.target.value })} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
+              <button type="submit" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Update Records</button>
+              {supabaseConnected && (
+                <button type="button" onClick={() => handleDeleteAthlete(selectedAthleteModal.id)} style={{ background: 'var(--red)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Trash2 size={14} /> Remove Athlete
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+      </Modal>
+
     </div>
   );
 }
