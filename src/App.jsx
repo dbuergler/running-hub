@@ -11,6 +11,38 @@ import AboutView from './components/AboutView';
 import CoachingCalculator from './components/CoachingCalculator';
 import RoncalliLogo from './components/RoncalliLogo';
 
+// --- Universal Blurred Modal Component ---
+export const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      zIndex: 1000,
+      background: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '1rem'
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--bg2)',
+        borderRadius: '12px',
+        border: '1px solid var(--border)',
+        maxWidth: '580px', width: '100%',
+        maxHeight: '90vh', overflowY: 'auto',
+        padding: '1.75rem',
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.2)',
+        position: 'relative'
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: 'var(--accent)' }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '18px', fontWeight: 'bold', color: 'var(--text3)', cursor: 'pointer' }}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 const getWorkoutForDay = (w, d) => {
   if (d === 6) return { type: 'rest', desc: 'Rest Day' };
   if (d === 7) {
@@ -72,6 +104,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: '', visible: false });
 
+  // Modal State for Tracker Day Click
+  const [selectedDayInfo, setSelectedDayInfo] = useState(null);
+
   // Dynamic states
   const [strategies, setStrategies] = useState([]);
   const [races, setRaces] = useState([]);
@@ -89,7 +124,6 @@ export default function App() {
 
   const currentYear = 2026;
 
-  // Inject Team Colors (Red, Blue, & White)
   useEffect(() => {
     document.documentElement.style.setProperty('--bg', '#f1f5f9');
     document.documentElement.style.setProperty('--bg2', '#ffffff');
@@ -99,12 +133,11 @@ export default function App() {
     document.documentElement.style.setProperty('--text', '#0f172a');
     document.documentElement.style.setProperty('--text2', '#334155');
     document.documentElement.style.setProperty('--text3', '#64748b');
-    document.documentElement.style.setProperty('--accent', '#005bb7'); // Roncalli Royal Blue
+    document.documentElement.style.setProperty('--accent', '#005bb7'); 
     document.documentElement.style.setProperty('--accent2', '#1e40af'); 
-    document.documentElement.style.setProperty('--red', '#c61030'); // Roncalli Red
+    document.documentElement.style.setProperty('--red', '#c61030'); 
     document.documentElement.style.setProperty('--blue', '#005bb7');
 
-    // FIX: Lock browser tab icon directly to your uploaded PNG logo
     const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
     link.type = 'image/png';
     link.rel = 'shortcut icon';
@@ -265,11 +298,15 @@ export default function App() {
     setSelectedDayInfo(null);
   };
 
-  const [selectedDayInfo, setSelectedDayInfo] = useState(null);
-
-  const personalLoggedMiles = Object.values(logs).reduce((sum, item) => sum + (parseFloat(item.miles) || 0), 0);
-  const personalGoal = 100;
-  const personalProgressPercentage = Math.min(100, Math.round((personalLoggedMiles / personalGoal) * 100));
+  // --- UNCAPPED MONTHLY PERSONAL MILEAGE CALCULATION ---
+  const activeMonthWeeks = currentMonthObj.weeks;
+  const monthlyPersonalMiles = Object.entries(logs).reduce((sum, [key, item]) => {
+    const weekNum = parseInt(key.replace('w', '').split('d')[0], 10);
+    if (activeMonthWeeks.includes(weekNum) && item && item.done) {
+      return sum + (parseFloat(item.miles) || 0);
+    }
+    return sum;
+  }, 0);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -290,10 +327,9 @@ export default function App() {
         </div>
       )}
 
-      {/* NAVBAR WITH RONCALLI LOGO COMPONENT */}
+      {/* NAVBAR */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'var(--accent)', borderBottom: '3.5px solid var(--red)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem', display: 'flex', alignItems: 'center', height: '62px', justifyContent: 'space-between' }}>
-          
           <div onClick={() => handlePageSelect('home')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
             <RoncalliLogo size={42} />
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: supabaseConnected ? '#4ade80' : '#f87171', border: '1px solid #ffffff' }} />
@@ -359,15 +395,15 @@ export default function App() {
               <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan and log your training cycle inside an interactive calendar grid. Click any calendar day to log metrics or edit the prescription.</p>
             </div>
 
-            {/* PERSONAL MILEAGE GOAL PROGRESS BAR */}
-            <div style={{ background: 'var(--bg2)', padding: '1.25rem 1.5rem', borderRadius: '10px', border: '1px solid var(--border)', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.04)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}><Trophy size={16} color="var(--red)" /> MY PERSONAL LOGGED MILEAGE</h4>
-                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--red)' }}>{personalLoggedMiles.toFixed(1)} / {personalGoal} MILES ({personalProgressPercentage}%)</span>
+            {/* UNCAPPED DYNAMIC MONTHLY PERSONAL MILEAGE CARD */}
+            <div style={{ background: 'var(--bg2)', padding: '1.25rem 1.5rem', borderRadius: '10px', border: '1px solid var(--border)', marginBottom: '2rem', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Trophy size={16} color="var(--red)" /> MY PERSONAL LOGGED MILEAGE FOR {currentMonthObj.name.toUpperCase()}
+                </h4>
+                <p style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>Total distance logged during {currentMonthObj.name} ({currentMonthObj.weeks.length} training weeks).</p>
               </div>
-              <div style={{ background: 'var(--bg3)', borderRadius: '6px', height: '12px', overflow: 'hidden' }}>
-                <div style={{ width: `${personalProgressPercentage}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent) 0%, var(--red) 100%)', transition: 'width 0.4s ease' }} />
-              </div>
+              <span style={{ fontSize: '24px', fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--red)' }}>{monthlyPersonalMiles.toFixed(1)} MILES</span>
             </div>
 
             {/* MONTH FILTER */}
@@ -465,24 +501,31 @@ export default function App() {
               })}
             </div>
 
-            {/* SELECTED DAY FORM */}
-            {selectedDayInfo && (
-              <div style={{ marginTop: '1.5rem', borderTop: '2px solid var(--accent)', paddingTop: '1.5rem' }}>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1rem' }}>
-                  Logs and Customization for {selectedDayInfo.dateStr} (Week {selectedDayInfo.week}, Day {selectedDayInfo.day})
-                </h3>
+            {/* TRACKER DAY LOG MODAL OVER BLURRED BACKGROUND */}
+            <Modal 
+              isOpen={!!selectedDayInfo} 
+              onClose={() => setSelectedDayInfo(null)}
+              title={selectedDayInfo ? `Workout: ${selectedDayInfo.dateStr}` : ''}
+            >
+              {selectedDayInfo && (
                 <DayItem 
                   key={selectedDayInfo.key}
                   dayKey={selectedDayInfo.key}
                   day={selectedDayInfo.plan}
                   logged={logs[selectedDayInfo.key] || {}}
-                  onSave={handleSaveLog}
-                  onClear={handleClearLog}
+                  onSave={(key, data) => {
+                    handleSaveLog(key, data);
+                    setSelectedDayInfo(null);
+                  }}
+                  onClear={(key) => {
+                    handleClearLog(key);
+                    setSelectedDayInfo(null);
+                  }}
                   onSavePlanOverride={handleSavePlanOverride}
                   showToast={showToast}
                 />
-              </div>
-            )}
+              )}
+            </Modal>
           </div>
         )}
 
