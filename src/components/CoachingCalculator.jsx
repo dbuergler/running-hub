@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Activity, Award, Trophy } from 'lucide-react';
+import { Clock, Trophy } from 'lucide-react';
 
 export default function CoachingCalculator() {
   const [distance, setDistance] = useState('5K');
@@ -182,7 +182,7 @@ export default function CoachingCalculator() {
                 </div>
                 <div style={{ background: 'var(--bg2)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
                   <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>FULL MARATHON</span>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight 700, color: 'var(--red)', marginTop: '2px' }}>{results.predictions.marathon}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: 'var(--red)', marginTop: '2px' }}>{results.predictions.marathon}</div>
                 </div>
               </div>
             </div>
