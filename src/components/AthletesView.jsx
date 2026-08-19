@@ -1,78 +1,66 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, FileText, TrendingUp, X, Edit2 } from 'lucide-react';
+import { Upload, Database, Trash2, X, Edit2 } from 'lucide-react';
 import mammoth from 'mammoth';
 import { Modal } from '../App';
 
-export default function StrategiesView({ strategies, xcResults, athletes, supabaseConnected, onRefresh, showToast }) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [tags, setTags] = useState('');
-  const [rawPasteText, setRawPasteText] = useState('');
+export default function AthletesView({ athletes, supabaseConnected, onRefresh, showToast }) {
+  const [csvText, setCsvText] = useState('');
   const [importStatus, setImportStatus] = useState('');
   const [showImporter, setShowImporter] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState('');
   const fileInputRef = useRef(null);
 
-  // Modal State for Editing/Viewing Strategy
-  const [selectedPlanModal, setSelectedPlanModal] = useState(null);
-  const [modalTitle, setModalTitle] = useState('');
-  const [modalTags, setModalTags] = useState('');
-  const [modalContent, setModalContent] = useState('');
+  // Modal State for Editing Runner
+  const [selectedAthleteModal, setSelectedAthleteModal] = useState(null);
 
-  // States for the Athlete Progression Graph
-  const [selectedAthlete, setSelectedAthlete] = useState('overall'); 
-  const [meetName, setMeetName] = useState('');
-  const [meetDate, setMeetDate] = useState('');
-  const [meetTime, setMeetTime] = useState('');
+  // Form states supporting Lifetime PR vs. Current Season PR
+  const [name, setName] = useState('');
+  const [grad, setGrad] = useState('');
+  const [team, setTeam] = useState('Varsity');
+  const [event, setEvent] = useState('5K');
+  const [xcpr, setXcpr] = useState(''); // Current Season PR
+  const [fivekpr, setFivekpr] = useState(''); // Lifetime PR
 
-  const openPlanModal = (s) => {
-    setSelectedPlanModal(s);
-    setModalTitle(s.title || '');
-    setModalTags(s.tags || '');
-    setModalContent(s.content || '');
-  };
-
-  const handleAddStrategy = async (e) => {
+  const handleAddAthlete = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+    if (!name.trim()) return;
 
     if (supabaseConnected) {
-      const { error } = await supabase.from('run_resources').insert({
-        id: Date.now(),
-        title,
-        content,
-        cat: 'Strategy',
-        tags
+      const { error } = await supabase.from('run_athletes').insert({
+        id: Date.now(), 
+        name, grad, team, event, xcpr, fivekpr
       });
       if (!error) {
-        setTitle(''); setContent(''); setTags('');
-        showToast("Race plan saved successfully!", "success");
+        setName(''); setGrad(''); setXcpr(''); setFivekpr('');
+        showToast("Athlete successfully registered!", "success");
         onRefresh();
       } else {
-        showToast("Error saving plan: " + error.message, "warning");
+        showToast("Error adding athlete: " + error.message, "warning");
       }
     }
   };
 
-  const handleUpdateStrategyModal = async (e) => {
+  const handleUpdateAthleteModal = async (e) => {
     e.preventDefault();
-    if (!selectedPlanModal || !supabaseConnected) return;
+    if (!selectedAthleteModal || !supabaseConnected) return;
 
-    const { error } = await supabase.from('run_resources').upsert({
-      id: selectedPlanModal.id,
-      title: modalTitle,
-      tags: modalTags,
-      content: modalContent,
-      cat: 'Strategy'
+    const { error } = await supabase.from('run_athletes').upsert({
+      id: selectedAthleteModal.id,
+      name: selectedAthleteModal.name,
+      grad: selectedAthleteModal.grad,
+      team: selectedAthleteModal.team,
+      event: selectedAthleteModal.event,
+      xcpr: selectedAthleteModal.xcpr, // Current Season PR
+      fivekpr: selectedAthleteModal.fivekpr // Lifetime PR
     });
 
     if (!error) {
-      showToast("Race plan updated!", "success");
-      setSelectedPlanModal(null);
+      showToast("Athlete records updated!", "success");
+      setSelectedAthleteModal(null);
       onRefresh();
     } else {
-      showToast("Error updating plan: " + error.message, "warning");
+      showToast("Error updating athlete: " + error.message, "warning");
     }
   };
 
@@ -88,20 +76,20 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         const arrayBuffer = evt.target.result;
         mammoth.extractRawText({ arrayBuffer })
           .then(result => {
-            setRawPasteText(result.value);
-            showToast(`Extracted text from Word document "${file.name}"!`, "success");
+            setCsvText(result.value);
+            showToast(`Extracted roster text from Word document "${file.name}"!`, "success");
           })
           .catch(err => {
-            showToast("Error decoding Word document: " + err.message, "warning");
+            showToast("Error reading Word file: " + err.message, "warning");
           });
       };
       reader.readAsArrayBuffer(file);
     } else if (file.name.endsWith('.pdf')) {
-      showToast("For PDF documents, please copy and paste the text into the box below.", "warning");
+      showToast("For PDF documents, please select and copy the text inside the PDF, then paste below.", "warning");
     } else {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        setRawPasteText(evt.target.result);
+        setCsvText(evt.target.result);
         showToast(`Loaded "${file.name}"!`, "success");
       };
       reader.readAsText(file);
@@ -110,263 +98,118 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
 
   const clearSelectedFile = () => {
     setSelectedFileName('');
-    setRawPasteText('');
+    setCsvText('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     showToast("Selected file cleared.", "warning");
   };
 
-  // Smart Document & Spreadsheet Importer Engine
   const handleBulkImport = async () => {
-    if (!rawPasteText.trim() || !supabaseConnected) return;
+    if (!csvText.trim() || !supabaseConnected) return;
 
     try {
-      const lines = rawPasteText.split('\n').map(l => l.trim()).filter(Boolean);
-      const listToInsert = [];
+      const lines = csvText.split('\n').filter(line => line.trim() !== '');
+      const dataToInsert = [];
 
-      // Check if text uses pipe (|) or tab separators for spreadsheets
-      const hasSeparators = lines.some(l => l.includes('|') || l.includes('\t'));
+      lines.forEach((line, index) => {
+        const cols = line.split(/[,\t|]/).map(c => c.trim());
+        if (cols.length === 0 || cols[0].toLowerCase().includes('name')) return;
 
-      if (hasSeparators) {
-        lines.forEach((line) => {
-          const parts = line.split(/[|\t]/).map(p => p.trim());
-          if (parts.length >= 2) {
-            listToInsert.push({
-              id: Date.now() + Math.floor(Math.random() * 10000),
-              title: parts[0],
-              content: parts[1],
-              cat: 'Strategy',
-              tags: parts[2] || 'Imported'
-            });
+        let athName = '';
+        let athGrad = '';
+        let athTeam = 'Varsity';
+        let athEvent = '5K';
+        let athPR = '';
+
+        cols.forEach(col => {
+          if (/^20\d{2}$/.test(col)) {
+            athGrad = col;
+          } else if (/^\d{1,2}:\d{2}(\.\d+)?$/.test(col)) {
+            athPR = col;
+          } else if (/^(varsity|jv|freshman|v|f)$/i.test(col)) {
+            const lower = col.toLowerCase();
+            athTeam = lower.startsWith('v') ? 'Varsity' : lower.startsWith('f') ? 'Freshman' : 'JV';
+          } else if (/^(5k|mile|1600m|3200m|800m)$/i.test(col)) {
+            athEvent = col;
+          } else if (/^[a-zA-Z\s.-]+$/.test(col) && col.length > 2) {
+            athName = col;
           }
         });
-      } else {
-        // Document Import: Use file name or first line as Title, and the entire text as Content
-        const docTitle = selectedFileName ? selectedFileName.replace(/\.[^/.]+$/, "") : (lines[0] || 'Imported Race Plan');
-        const docContent = lines.length > 1 && !selectedFileName ? lines.slice(1).join('\n') : lines.join('\n');
 
-        listToInsert.push({
-          id: Date.now(),
-          title: docTitle,
-          content: docContent,
-          cat: 'Strategy',
-          tags: 'Imported'
-        });
-      }
+        if (athName) {
+          dataToInsert.push({
+            id: Date.now() + index,
+            name: athName,
+            grad: athGrad,
+            team: athTeam,
+            event: athEvent,
+            xcpr: athPR || '—',
+            fivekpr: athPR || '—' // Populates both Season PR and Lifetime PR by default on import
+          });
+        }
+      });
 
-      if (listToInsert.length === 0) {
-        showToast("Error parsing text structure.", "warning");
+      if (dataToInsert.length === 0) {
+        showToast("Error: No valid athlete data found. Check spacing.", "warning");
         return;
       }
 
-      const { error } = await supabase.from('run_resources').insert(listToInsert);
+      const { error } = await supabase.from('run_athletes').upsert(dataToInsert);
       if (error) throw error;
 
-      showToast(`Successfully imported ${listToInsert.length} race plan(s)!`, "success");
-      setRawPasteText('');
+      showToast(`Successfully imported ${dataToInsert.length} athletes!`, "success");
+      setCsvText('');
       setSelectedFileName('');
       if (fileInputRef.current) fileInputRef.current.value = '';
       onRefresh();
     } catch (err) {
-      showToast("Error importing data: " + err.message, "warning");
+      showToast("Error importing roster: " + err.message, "warning");
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDeleteAthlete = async (id) => {
     if (supabaseConnected) {
-      await supabase.from('run_resources').delete().eq('id', id);
-      showToast("Race plan removed.", "warning");
-      setSelectedPlanModal(null);
+      await supabase.from('run_athletes').delete().eq('id', id);
+      setSelectedAthleteModal(null);
+      showToast("Athlete removed from roster.", "warning");
       onRefresh();
     }
   };
 
-  const handleDeleteAllPlans = async () => {
-    if (supabaseConnected && window.confirm("Are you sure you want to delete all race plans from the database?")) {
-      const { error } = await supabase.from('run_resources').delete().neq('id', 0);
-      if (!error) {
-        showToast("All race plans cleared from database.", "warning");
-        onRefresh();
-      }
-    }
-  };
-
-  const handleAddXCResult = async (e) => {
-    e.preventDefault();
-    if (!selectedAthlete || selectedAthlete === 'overall' || !meetName || !meetTime || !meetDate) {
-      showToast("Please select a specific runner to log a meet result.", "warning");
-      return;
-    }
-
-    if (supabaseConnected) {
-      const { error } = await supabase.from('run_xc').insert({
-        id: Date.now(),
-        athlete: selectedAthlete,
-        meet: meetName,
-        time: meetTime,
-        date: meetDate,
-        dist: '5K'
-      });
-      if (!error) {
-        setMeetName(''); setMeetTime('');
-        showToast("Meet result logged successfully!", "success");
-        onRefresh();
-      } else {
-        showToast("Error saving meet result: " + error.message, "warning");
-      }
-    }
-  };
-
-  const timeToSeconds = (timeStr) => {
-    const parts = timeStr.split(':').map(Number);
-    if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return 0;
-    return parts[0] * 60 + parts[1];
-  };
-
-  const getGraphScalingMetrics = (filteredResults) => {
-    const timesInSeconds = filteredResults.map(r => timeToSeconds(r.time)).filter(s => s > 0);
-    const minSec = timesInSeconds.length ? Math.min(...timesInSeconds) : 900;
-    const maxSec = timesInSeconds.length ? Math.max(...timesInSeconds) : 1200;
-    const paddingOffset = (maxSec - minSec) * 0.1 || 30;
-
-    return {
-      min: Math.max(0, minSec - paddingOffset),
-      max: maxSec + paddingOffset
-    };
-  };
-
-  const renderSVGGraph = () => {
-    if (selectedAthlete === 'overall') {
-      const grouped = {};
-      xcResults.forEach(r => {
-        if (!grouped[r.athlete]) grouped[r.athlete] = [];
-        grouped[r.athlete].push(r);
-      });
-
-      const validAthletes = Object.keys(grouped).filter(ath => grouped[ath].length >= 2);
-      if (validAthletes.length === 0) {
-        return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text3)' }}>Add at least 2 meet results for one or more athletes to plot.</div>;
-      }
-
-      const allFilteredResults = xcResults.filter(r => validAthletes.includes(r.athlete));
-      const metrics = getGraphScalingMetrics(allFilteredResults);
-
-      const colorPalette = ['#d31034', '#005bb7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-
-      return (
-        <div style={{ position: 'relative', width: '100%', flex: 1 }}>
-          <svg viewBox="0 0 520 220" style={{ width: '100%', height: '100%' }}>
-            <line x1="50" y1="20" x2="500" y2="20" stroke="#e2e8f0" strokeWidth="1" />
-            <line x1="50" y1="100" x2="500" y2="100" stroke="#e2e8f0" strokeWidth="1" />
-            <line x1="50" y1="180" x2="500" y2="180" stroke="#e2e8f0" strokeWidth="1" />
-
-            {validAthletes.map((ath, athIdx) => {
-              const runnerData = grouped[ath].sort((a, b) => new Date(a.date) - new Date(b.date));
-              const points = runnerData.map((r, i) => {
-                const x = 50 + (i * (450 / Math.max(1, runnerData.length - 1)));
-                const ySec = timeToSeconds(r.time);
-                const y = 20 + ((metrics.max - ySec) / (metrics.max - metrics.min)) * 160;
-                return { x, y, ...r };
-              });
-
-              const color = colorPalette[athIdx % colorPalette.length];
-
-              return (
-                <g key={ath}>
-                  <polyline fill="none" stroke={color} strokeWidth="3" points={points.map(p => `${p.x},${p.y}`).join(' ')} />
-                  {points.map((p, pIdx) => (
-                    <circle key={pIdx} cx={p.x} cy={p.y} r="5" fill={color} stroke="#ffffff" strokeWidth="1.5" title={`${ath}: ${p.time}`} />
-                  ))}
-                </g>
-              );
-            })}
-          </svg>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
-            {validAthletes.map((ath, idx) => (
-              <span key={ath} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '8px', height: '8px', background: colorPalette[idx % colorPalette.length], borderRadius: '50%' }} />
-                {ath}
-              </span>
-            ))}
-          </div>
-        </div>
-      );
-    } else {
-      const runnerData = xcResults
-        .filter(r => r.athlete === selectedAthlete)
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-      if (runnerData.length < 2) {
-        return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text3)' }}>Log at least 2 meet results for this athlete to plot trendlines.</div>;
-      }
-
-      const metrics = getGraphScalingMetrics(runnerData);
-      const points = runnerData.map((r, i) => {
-        const x = 50 + (i * (450 / Math.max(1, runnerData.length - 1)));
-        const ySec = timeToSeconds(r.time);
-        const y = 20 + ((metrics.max - ySec) / (metrics.max - metrics.min)) * 160;
-        return { x, y, ...r };
-      });
-
-      return (
-        <div style={{ position: 'relative', width: '100%', flex: 1 }}>
-          <svg viewBox="0 0 520 220" style={{ width: '100%', height: '100%' }}>
-            <line x1="50" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeWidth="1" />
-            <line x1="50" y1="100" x2="500" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-            <line x1="50" y1="180" x2="500" y2="180" stroke="#f1f5f9" strokeWidth="1" />
-
-            <polyline fill="none" stroke="var(--red)" strokeWidth="4" points={points.map(p => `${p.x},${p.y}`).join(' ')} />
-            {points.map((p, index) => (
-              <g key={index}>
-                <circle cx={p.x} cy={p.y} r="6" fill="var(--accent)" stroke="#ffffff" strokeWidth="2" />
-                <text x={p.x} y={p.y - 12} fontSize="10" fontFamily="var(--font-mono)" textAnchor="middle" fill="var(--text)" fontWeight="bold">{p.time}</text>
-                <text x={p.x} y="205" fontSize="8" fontFamily="var(--font-mono)" textAnchor="middle" fill="var(--text3)">{p.meet.substring(0, 10)}</text>
-              </g>
-            ))}
-          </svg>
-        </div>
-      );
-    }
-  };
-
-  const defaultStrategies = [
-    { title: 'XC Goal Pacing', content: 'Run even effort, not even splits. Settle the first mile, work the second mile, and run the third mile on raw strength.', tags: 'Pacing, XC' },
-    { title: 'Up-Hill Mechanics', content: 'Shorten stride, elevate arm drive, and charge for 10 paces over the crest to establish visual gaps.', tags: 'Hills, Strength' }
-  ];
-
-  const currentDisplayList = supabaseConnected ? strategies : defaultStrategies;
+  const totalRoster = athletes.length;
+  const varsityCount = athletes.filter(a => a.team === 'Varsity').length;
+  const jvCount = athletes.filter(a => a.team === 'JV').length;
 
   return (
     <div>
       <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>COACHING RACE PLANS</h2>
-          <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Add and configure custom race plans, tactical guides, or mental cues for your athletes.</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TEAM ROSTER & STATS</h2>
+          <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Coordinate athletes, grad cycles, and track Lifetime vs. Season PRs.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {supabaseConnected && strategies.length > 0 && (
-            <button 
-              onClick={handleDeleteAllPlans} 
-              style={{ background: 'transparent', border: '1px solid var(--red)', color: 'var(--red)', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Clear All Plans
-            </button>
-          )}
-          <button 
-            onClick={() => setShowImporter(!showImporter)} 
-            className="btn-interactive"
-            style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <FileText size={14} /> {showImporter ? "Close Bulk Importer" : "Import Plans from Docs / Excel"}
-          </button>
+        <button onClick={() => setShowImporter(!showImporter)} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Upload size={14} /> {showImporter ? "Close Roster Importer" : "Bulk Upload Season Data"}
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        <div style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '5px solid var(--accent)' }}>
+          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>TOTAL ATHLETES</span>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'var(--accent)', marginTop: '2px' }}>{totalRoster} Runners</h3>
+        </div>
+        <div style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '5px solid var(--red)' }}>
+          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>VARSITY SQUAD</span>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'var(--red)', marginTop: '2px' }}>{varsityCount} Runners</h3>
+        </div>
+        <div style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '5px solid var(--accent2)' }}>
+          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>JV / FRESHMAN</span>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'var(--accent2)', marginTop: '2px' }}>{jvCount} Runners</h3>
         </div>
       </div>
 
       {showImporter && (
         <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '6px' }}>Excel, Docs, or CSV Clipboard Importer</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem', lineHeight: 1.5 }}>
-            Upload any spreadsheet or Word document file (`.csv`, `.txt`, `.docx`) or paste rows directly below.
-          </p>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}><Database size={16} /> Bulk Spreadsheets Importer</h3>
+          <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any spreadsheet file (`.csv`, `.txt`, `.docx`) or paste rows directly. No headers required!</p>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
             <input 
@@ -388,75 +231,114 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
             )}
           </div>
 
-          <textarea value={rawPasteText} onChange={e => setRawPasteText(e.target.value)} placeholder="Or paste manually here..." style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border2)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
+          <textarea value={csvText} onChange={e => setCsvText(e.target.value)} placeholder="Or paste manually here..." style={{ width: '100%', minHeight: '100px', padding: '10px', border: '1px solid var(--border)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '1rem' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <button onClick={handleBulkImport} disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Compile & Import Plans</button>
-            {importStatus && <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{importStatus}</span>}
+            <button onClick={handleBulkImport} disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Upload Data</button>
+            {importStatus && <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)' }}>{importStatus}</span>}
           </div>
         </div>
       )}
 
-      {/* PLANS DISPLAY GRID WITH EDITABLE MODALS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-        <div>
-          <form onSubmit={handleAddStrategy} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '8px', color: 'var(--accent)' }}>Create New Race Plan</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Plan Name</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Tags</label><input type="text" value={tags} onChange={e => setTags(e.target.value)} placeholder="XC, Hills" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Plan Details</label><textarea value={content} onChange={e => setContent(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px', minHeight: '120px' }} /></div>
-            <button type="submit" disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--red)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add to Database</button>
-          </form>
-        </div>
+      {/* COMPACT BALANCED GRID LAYOUT */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+        {/* Register Form */}
+        <form onSubmit={handleAddAthlete} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem', height: 'fit-content' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '8px', color: 'var(--accent)' }}>Register Athlete</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Name</label><input type="text" value={name} onChange={e => setName(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Grad Class</label><input type="text" value={grad} onChange={e => setGrad(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Team Group</label>
+              <select value={team} onChange={e => setTeam(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                <option value="Varsity">Varsity</option><option value="JV">JV</option><option value="Freshman">Freshman</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Primary Event</label>
+            <select value={event} onChange={e => setEvent(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
+              <option value="5K">5K XC / Track</option>
+              <option value="10K">10K</option>
+              <option value="Half Marathon">Half Marathon</option>
+              <option value="Marathon">Marathon</option>
+              <option value="Mile">Mile</option>
+              <option value="800m">800m</option>
+            </select>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Lifetime PR</label><input type="text" value={fivekpr} onChange={e => setFivekpr(e.target.value)} placeholder="e.g. 16:12" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Season PR</label><input type="text" value={xcpr} onChange={e => setXcpr(e.target.value)} placeholder="e.g. 16:45" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+          </div>
+          <button type="submit" disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add Athlete</button>
+        </form>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {currentDisplayList.map((s) => (
+        {/* Athlete Grid Display */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', alignContent: 'start' }}>
+          {athletes.map((a) => (
             <div 
-              key={s.id || s.title} 
-              onClick={() => openPlanModal(s)}
+              key={a.id || a.name} 
+              onClick={() => setSelectedAthleteModal(a)}
               className="card-interactive" 
-              style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)', cursor: 'pointer' }}
+              style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderTop: `4px solid ${a.team === 'Varsity' ? 'var(--accent)' : 'var(--text3)'}`, display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{s.title}</h4>
-                <Edit2 size={15} style={{ color: 'var(--text3)' }} />
+                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>Grad: {a.grad || '—'}</span>
+                <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: '4px', background: 'var(--bg3)' }}>{a.team}</span>
               </div>
-              <p style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '8px', lineHeight: 1.6, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                {s.content || "(No plan details provided. Click to edit/add details.)"}
-              </p>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{a.name}</h4>
+              <p style={{ fontSize: '12px', color: 'var(--text2)' }}><strong>Event:</strong> {a.event || '—'}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                <div style={{ padding: '4px 8px', background: '#f8fafc', borderLeft: '3px solid var(--red)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+                  <strong>Season PR:</strong> {a.xcpr || '—'}
+                </div>
+                <div style={{ padding: '4px 8px', background: '#f8fafc', borderLeft: '3px solid var(--accent)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+                  <strong>Lifetime PR:</strong> {a.fivekpr || '—'}
+                </div>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* EDITABLE PLAN DETAIL MODAL OVER BLURRED BACKGROUND */}
+      {/* EDIT ATHLETE MODAL OVER BLURRED BACKGROUND */}
       <Modal 
-        isOpen={!!selectedPlanModal} 
-        onClose={() => setSelectedPlanModal(null)}
-        title={selectedPlanModal ? `Edit Race Plan: ${selectedPlanModal.title}` : ''}
+        isOpen={!!selectedAthleteModal} 
+        onClose={() => setSelectedAthleteModal(null)}
+        title={selectedAthleteModal ? `Edit Athlete: ${selectedAthleteModal.name}` : ''}
       >
-        {selectedPlanModal && (
-          <form onSubmit={handleUpdateStrategyModal} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {selectedAthleteModal && (
+          <form onSubmit={handleUpdateAthleteModal} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Plan Title</label>
-              <input type="text" value={modalTitle} onChange={e => setModalTitle(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Name</label>
+              <input type="text" value={selectedAthleteModal.name} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, name: e.target.value })} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Tags</label>
-              <input type="text" value={modalTags} onChange={e => setModalTags(e.target.value)} placeholder="XC, Speed" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Grad Class</label>
+                <input type="text" value={selectedAthleteModal.grad || ''} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, grad: e.target.value })} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Team Group</label>
+                <select value={selectedAthleteModal.team || 'Varsity'} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, team: e.target.value })} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                  <option value="Varsity">Varsity</option><option value="JV">JV</option><option value="Freshman">Freshman</option>
+                </select>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Plan Details / Instructions</label>
-              <textarea value={modalContent} onChange={e => setModalContent(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px', minHeight: '140px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Lifetime PR</label>
+                <input type="text" value={selectedAthleteModal.fivekpr || ''} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, fivekpr: e.target.value })} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Season PR</label>
+                <input type="text" value={selectedAthleteModal.xcpr || ''} onChange={e => setSelectedAthleteModal({ ...selectedAthleteModal, xcpr: e.target.value })} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+              </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
-              <button type="submit" className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
-              {supabaseConnected && selectedPlanModal.id && (
-                <button 
-                  type="button"
-                  onClick={() => handleDelete(selectedPlanModal.id)} 
-                  style={{ border: 'none', background: 'var(--red)', color: '#fff', padding: '10px 15px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <Trash2 size={14} /> Delete Strategy
+              <button type="submit" className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Update Records</button>
+              {supabaseConnected && (
+                <button type="button" onClick={() => handleDeleteAthlete(selectedAthleteModal.id)} style={{ background: 'var(--red)', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Trash2 size={14} /> Remove Athlete
                 </button>
               )}
             </div>
@@ -464,50 +346,6 @@ export default function StrategiesView({ strategies, xcResults, athletes, supaba
         )}
       </Modal>
 
-      {/* --- SEASON PROGRESSION PLOT GRAPH --- */}
-      <div style={{ borderTop: '2px solid var(--border)', paddingTop: '2.5rem' }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700, color: 'var(--accent)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <TrendingUp size={22} /> ATHLETE SEASON PROGRESSION
-        </h3>
-        <p style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '1.5rem' }}>Select any runner or view the entire team roster combined on the same plot grid.</p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-          {/* Left Side: Add Result Form */}
-          <form onSubmit={handleAddXCResult} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>Log Season Meet Time</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Select Athlete</label>
-              <select value={selectedAthlete} onChange={e => setSelectedAthlete(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
-                <option value="overall">-- View Team Overall --</option>
-                {athletes.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
-              </select>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Meet Name</label>
-              <input type="text" value={meetName} onChange={e => setMeetName(e.target.value)} required placeholder="e.g. Semi-State Invite" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Meet Date</label>
-                <input type="date" value={meetDate} onChange={e => setMeetDate(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>5K Time (MM:SS)</label>
-                <input type="text" value={meetTime} onChange={e => setMeetTime(e.target.value)} required placeholder="e.g. 17:14" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
-              </div>
-            </div>
-            <button type="submit" disabled={!supabaseConnected || selectedAthlete === 'overall'} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Save Meet Time</button>
-          </form>
-
-          {/* Right Side: Dynamic SVG Plot */}
-          <div style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: '300px', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.06)' }}>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)', marginBottom: '1rem' }}>
-              {selectedAthlete === 'overall' ? "Roster Progression Overall" : `${selectedAthlete} - 5K Progression`}
-            </h4>
-            {renderSVGGraph()}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
