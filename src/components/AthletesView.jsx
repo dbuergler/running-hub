@@ -18,7 +18,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
   const [name, setName] = useState('');
   const [grad, setGrad] = useState('');
   const [team, setTeam] = useState('Varsity');
-  const [event, setEvent] = useState('5K');
+  const [event, setEvent] = useState('5K XC / Track');
   const [xcpr, setXcpr] = useState(''); // Current Season PR
   const [fivekpr, setFivekpr] = useState(''); // Lifetime PR
 
@@ -117,7 +117,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
         let athName = '';
         let athGrad = '';
         let athTeam = 'Varsity';
-        let athEvent = '5K';
+        let athEvent = '5K XC / Track';
         let athPR = '';
 
         cols.forEach(col => {
@@ -143,7 +143,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
             team: athTeam,
             event: athEvent,
             xcpr: athPR || '—',
-            fivekpr: athPR || '—' // Populates both Season PR and Lifetime PR by default on import
+            fivekpr: athPR || '—'
           });
         }
       });
@@ -191,7 +191,8 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      {/* TEAM SQUAD QUICK STATS BAR */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
         <div style={{ background: 'var(--bg2)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border)', borderLeft: '5px solid var(--accent)' }}>
           <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>TOTAL ATHLETES</span>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'var(--accent)', marginTop: '2px' }}>{totalRoster} Runners</h3>
@@ -207,7 +208,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
       </div>
 
       {showImporter && (
-        <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ background: '#f8fafc', border: '1px dashed var(--accent)', borderRadius: '10px', padding: '1.5rem', marginBottom: '2.5rem' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}><Database size={16} /> Bulk Spreadsheets Importer</h3>
           <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '1rem' }}>Upload any spreadsheet file (`.csv`, `.txt`, `.docx`) or paste rows directly. No headers required!</p>
           
@@ -239,14 +240,21 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
         </div>
       )}
 
-      {/* COMPACT BALANCED GRID LAYOUT */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-        {/* Register Form */}
-        <form onSubmit={handleAddAthlete} style={{ background: 'var(--bg2)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem', height: 'fit-content' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '8px', color: 'var(--accent)' }}>Register Athlete</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Name</label><input type="text" value={name} onChange={e => setName(e.target.value)} required style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+      {/* CENTERED REGISTER ATHLETE FORM */}
+      <div style={{ maxWidth: '560px', margin: '0 auto 3rem' }}>
+        <form onSubmit={handleAddAthlete} style={{ background: 'var(--bg2)', padding: '1.75rem', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 4px 6px -1px rgba(15,43,92,0.06)', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '10px', color: 'var(--accent)', textAlign: 'center' }}>
+            Register Athlete
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Name</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Will Lewis" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Grad Class</label><input type="text" value={grad} onChange={e => setGrad(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Grad Class</label>
+              <input type="text" value={grad} onChange={e => setGrad(e.target.value)} placeholder="e.g. 12" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Team Group</label>
               <select value={team} onChange={e => setTeam(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
@@ -257,7 +265,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Primary Event</label>
             <select value={event} onChange={e => setEvent(e.target.value)} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }}>
-              <option value="5K">5K XC / Track</option>
+              <option value="5K XC / Track">5K XC / Track</option>
               <option value="10K">10K</option>
               <option value="Half Marathon">Half Marathon</option>
               <option value="Marathon">Marathon</option>
@@ -266,14 +274,29 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
             </select>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Lifetime PR</label><input type="text" value={fivekpr} onChange={e => setFivekpr(e.target.value)} placeholder="e.g. 16:12" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Season PR</label><input type="text" value={xcpr} onChange={e => setXcpr(e.target.value)} placeholder="e.g. 16:45" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} /></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Lifetime PR</label>
+              <input type="text" value={fivekpr} onChange={e => setFivekpr(e.target.value)} placeholder="e.g. 16:12" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Season PR</label>
+              <input type="text" value={xcpr} onChange={e => setXcpr(e.target.value)} placeholder="e.g. 16:45" style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px' }} />
+            </div>
           </div>
-          <button type="submit" disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Add Athlete</button>
+          <button type="submit" disabled={!supabaseConnected} className="btn-interactive" style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', marginTop: '6px' }}>
+            Add Athlete
+          </button>
         </form>
+      </div>
 
-        {/* Athlete Grid Display */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', alignContent: 'start' }}>
+      {/* FULL-WIDTH ROSTER GRID BELOW THE FORM */}
+      <div style={{ borderTop: '2px solid var(--border)', paddingTop: '2.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 700, color: 'var(--accent)' }}>Active Roster</h3>
+          <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{athletes.length} Athletes Enrolled</span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '1.25rem' }}>
           {athletes.map((a) => (
             <div 
               key={a.id || a.name} 
@@ -286,7 +309,7 @@ export default function AthletesView({ athletes, supabaseConnected, onRefresh, s
                 <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: '4px', background: 'var(--bg3)' }}>{a.team}</span>
               </div>
               <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>{a.name}</h4>
-              <p style={{ fontSize: '12px', color: 'var(--text2)' }}><strong>Event:</strong> {a.event || '—'}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text2)' }}><strong>Event:</strong> {a.event || '5K'}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                 <div style={{ padding: '4px 8px', background: '#f8fafc', borderLeft: '3px solid var(--red)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
                   <strong>Season PR:</strong> {a.xcpr || '—'}
