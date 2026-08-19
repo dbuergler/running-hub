@@ -15,7 +15,7 @@ const CalendarIcon = ({ size = 18, color = "currentColor" }) => (
 export default function RacesView({ races, supabaseConnected, onRefresh, showToast }) {
   const [calendarType, setCalendarType] = useState('team');
   const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(7); // Aug
+  const [currentMonth, setCurrentMonth] = useState(7); // Default to August (7)
   
   // Modal States
   const [selectedRaceModal, setSelectedRaceModal] = useState(null);
@@ -98,34 +98,34 @@ export default function RacesView({ races, supabaseConnected, onRefresh, showToa
 
   return (
     <div>
-      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--accent)' }}>TEAM & PERSONAL CALENDARS</h2>
-          <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan upcoming events in an interactive grid view. Switch between lists or schedule events.</p>
+          <p style={{ fontSize: '13px', color: 'var(--text3)' }}>Plan upcoming events in an expanded grid view. Click any calendar day to schedule a race event.</p>
         </div>
         <button onClick={() => setShowScheduleModal(true)} className="btn-interactive" style={{ background: 'var(--red)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <CalendarIcon size={14} /> Schedule Event
         </button>
       </div>
 
-      {/* SIDE-BY-SIDE GRID LAYOUT: Left = Calendar Grid, Right = Races This Year List */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+      {/* EXPANDED 70/30 SIDE-BY-SIDE GRID LAYOUT */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2.2fr) minmax(280px, 1fr)', gap: '1.75rem', alignItems: 'start' }}>
         
-        {/* LEFT SIDE: MONTHLY GRID CALENDAR */}
+        {/* LEFT SIDE: SPACIOUS MONTHLY GRID CALENDAR (~70% WIDTH) */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--accent)', color: '#fff', padding: '12px 20px', borderRadius: '10px 10px 0 0', borderBottom: '3px solid var(--red)' }}>
-            <button onClick={prevMonth} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><ChevronLeft size={20} /></button>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, textTransform: 'uppercase' }}>{monthNames[currentMonth]} {currentYear}</h3>
-            <button onClick={nextMonth} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><ChevronRight size={20} /></button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--accent)', color: '#fff', padding: '14px 24px', borderRadius: '10px 10px 0 0', borderBottom: '3.5px solid var(--red)' }}>
+            <button onClick={prevMonth} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><ChevronLeft size={22} /></button>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{monthNames[currentMonth]} {currentYear}</h3>
+            <button onClick={nextMonth} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><ChevronRight size={22} /></button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border2)', border: '1px solid var(--border2)', backgroundColor: 'var(--bg3)', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <div key={i} style={{ background: '#f8fafc', padding: '8px', textAlign: 'center', fontWeight: 600, fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{d}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border2)', border: '1px solid var(--border2)', backgroundColor: 'var(--bg3)', borderRadius: '0 0 10px 10px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(15,43,92,0.06)' }}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
+              <div key={i} style={{ background: '#f8fafc', padding: '12px 8px', textAlign: 'center', fontWeight: 700, fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{d}</div>
             ))}
             
             {Array.from({ length: firstDayIndex }).map((_, i) => (
-              <div key={`empty-${i}`} style={{ background: 'var(--bg2)', minHeight: '75px', opacity: 0.5 }} />
+              <div key={`empty-${i}`} style={{ background: 'var(--bg2)', minHeight: '115px', opacity: 0.5 }} />
             ))}
 
             {Array.from({ length: daysInMonth }).map((_, idx) => {
@@ -141,14 +141,15 @@ export default function RacesView({ races, supabaseConnected, onRefresh, showToa
                   key={`day-${dayNum}`} 
                   onClick={() => handleDaySelect(dayNum)}
                   style={{ 
-                    background: 'var(--bg2)', minHeight: '75px', padding: '6px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer', border: date === dateStr ? '2px solid var(--red)' : 'none',
-                    transition: 'background 0.1s'
+                    background: 'var(--bg2)', minHeight: '115px', padding: '10px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer',
+                    border: date === dateStr ? '2.5px solid var(--red)' : 'none',
+                    transition: 'background 0.15s ease'
                   }}
                   onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
                   onMouseOut={e => e.currentTarget.style.background = 'var(--bg2)'}
                 >
-                  <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text3)', fontWeight: 600 }}>{dayNum}</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '3px' }}>
+                  <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text2)', fontWeight: 700 }}>{dayNum}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
                     {dayRaces.map((r, i) => {
                       const type = (r.ag || 'team').toLowerCase();
                       return (
@@ -156,10 +157,11 @@ export default function RacesView({ races, supabaseConnected, onRefresh, showToa
                           key={r.id || i} 
                           onClick={(e) => { e.stopPropagation(); setSelectedRaceModal(r); }}
                           style={{ 
-                            fontSize: '8.5px', fontWeight: 600, padding: '2px 4px', borderRadius: '3px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap',
+                            fontSize: '10px', fontWeight: 600, padding: '4px 6px', borderRadius: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap',
                             background: type === 'team' ? '#dbeafe' : '#fce7f3',
                             color: type === 'team' ? 'var(--accent)' : 'var(--red)',
-                            border: `1px solid ${type === 'team' ? '#93c5fd' : '#fbcfe8'}`
+                            border: `1px solid ${type === 'team' ? '#93c5fd' : '#fbcfe8'}`,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                           }}
                         >
                           {r.name}
@@ -173,18 +175,18 @@ export default function RacesView({ races, supabaseConnected, onRefresh, showToa
           </div>
         </div>
 
-        {/* RIGHT SIDE: RACES THIS YEAR LIST */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-            <button onClick={() => setCalendarType('team')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: calendarType === 'team' ? 'var(--accent)' : 'var(--bg2)', color: calendarType === 'team' ? '#ffffff' : 'var(--text2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>🛡️ Team Target</button>
-            <button onClick={() => setCalendarType('personal')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: calendarType === 'personal' ? 'var(--red)' : 'var(--bg2)', color: calendarType === 'personal' ? '#ffffff' : 'var(--text2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>🏃 Personal Goal</button>
+        {/* RIGHT SIDE: SIDEBAR RACES LIST (~30% WIDTH) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+            <button onClick={() => setCalendarType('team')} className="btn-interactive" style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid var(--border)', background: calendarType === 'team' ? 'var(--accent)' : 'var(--bg2)', color: calendarType === 'team' ? '#ffffff' : 'var(--text2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>🛡️ Team Target</button>
+            <button onClick={() => setCalendarType('personal')} className="btn-interactive" style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid var(--border)', background: calendarType === 'personal' ? 'var(--red)' : 'var(--bg2)', color: calendarType === 'personal' ? '#ffffff' : 'var(--text2)', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>🏃 Personal Goal</button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '520px', overflowY: 'auto' }}>
             {filteredRaces.map((r) => {
               const isTeam = (r.ag || 'team').toLowerCase() === 'team';
               return (
-                <div key={r.id || r.name} onClick={() => setSelectedRaceModal(r)} className="card-interactive" style={{ background: 'var(--bg2)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: `4px solid ${isTeam ? 'var(--accent)' : 'var(--red)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+                <div key={r.id || r.name} onClick={() => setSelectedRaceModal(r)} className="card-interactive" style={{ background: 'var(--bg2)', padding: '1rem 1.25rem', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: `5px solid ${isTeam ? 'var(--accent)' : 'var(--red)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
                   <div>
                     <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>{r.name} ({r.dist})</h4>
                     <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text3)' }}>{r.date} · {isTeam ? "Team" : "Personal"}</span>
@@ -200,7 +202,7 @@ export default function RacesView({ races, supabaseConnected, onRefresh, showToa
 
       </div>
 
-      {/* SCHEDULE RACE EVENT MODAL */}
+      {/* SCHEDULE RACE EVENT MODAL OVER BLURRED BACKGROUND */}
       <Modal 
         isOpen={showScheduleModal} 
         onClose={() => setShowScheduleModal(false)}
@@ -252,7 +254,7 @@ export default function RacesView({ races, supabaseConnected, onRefresh, showToa
         </form>
       </Modal>
 
-      {/* RACE DETAILS & DELETE MODAL */}
+      {/* RACE DETAILS & DELETE MODAL OVER BLURRED BACKGROUND */}
       <Modal 
         isOpen={!!selectedRaceModal} 
         onClose={() => setSelectedRaceModal(null)}
@@ -267,6 +269,7 @@ export default function RacesView({ races, supabaseConnected, onRefresh, showToa
             {supabaseConnected && selectedRaceModal.id && (
               <button 
                 onClick={() => handleDeleteRace(selectedRaceModal.id)} 
+                className="btn-interactive"
                 style={{ border: 'none', background: 'var(--red)', color: '#fff', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '6px', alignSelf: 'flex-start' }}
               >
                 <Trash2 size={14} /> Delete Event
